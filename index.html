@@ -90,9 +90,6 @@
 <div id="toast-root" class="fixed top-16 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-2 w-[92%] max-w-md pointer-events-none"></div>
 
 <script>
-/* =========================================================
-   UTILITÁRIOS
-   ========================================================= */
 const $ = id => document.getElementById(id);
 const fmt = (n, d = 2) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
 const brl = n => 'R$' + fmt(n);
@@ -117,10 +114,6 @@ function maskPhone(el) {
   }
   el.value = o;
 }
-
-/* =========================================================
-   CATÁLOGOS FIXOS
-   ========================================================= */
 const ACABS = [
   { k: 'BR', n: 'Branco Brilhante RAL9003', cor: '#ffffff' },
   { k: 'BF', n: 'Branco Fosco', cor: '#efefe9' },
@@ -131,9 +124,7 @@ const ACABS = [
 ];
 const ACAB_BY = Object.fromEntries(ACABS.map(a => [a.k, a]));
 const dot = k => { const a = ACAB_BY[k]; return `<span class="dot" style="background:${a ? a.cor : '#fff'}"></span>`; };
-
 const LINHAS = [['MG25', 'MG25'], ['SU490', 'SU490'], ['APV001', 'APV001'], ['2080', '2080'], ['Suprema', 'SU'], ['Gold', 'GO'], ['FA350', 'FA350'], ['MG16', 'MG16'], ['MG20', 'MG20'], ['MG32', 'MG32'], ['ISU490', 'ISU490']];
-
 const NOMES_PERFIS = [
   ['Marco inferior 2 planos', 'Marcos'], ['Marco superior', 'Marcos'], ['Marco lateral', 'Marcos'], ['Marco inferior 3 trilhos', 'Marcos'],
   ['Folha lateral', 'Folhas'], ['Folha encontro', 'Folhas'], ['Folha travessa superior', 'Folhas'], ['Folha travessa inferior', 'Folhas'],
@@ -146,7 +137,6 @@ const NOMES_PERFIS = [
   ['Requadro', 'Contramarcos'], ['Sobremarco', 'Contramarcos'], ['Perfil Z', 'Perfis U'], ['Travessa de porta', 'Travessas'],
   ['Rodapé de porta', 'Travessas'], ['Montante reforçado', 'Montantes'], ['Suporte de escova', 'Arremates'], ['Trilho para box', 'Trilhos']
 ];
-
 function sortearAcab(r) {
   const x = r();
   if (x < 0.45) return 'BR';
@@ -156,8 +146,6 @@ function sortearAcab(r) {
   if (x < 0.93) return 'AM';
   return 'BG';
 }
-
-/* ---------- 2145 PERFIS (11 linhas x 195 perfis) ---------- */
 let PERFIS = (function () {
   const r = mulberry32(20262145);
   const out = [];
@@ -190,70 +178,35 @@ let PERFIS = (function () {
 const R2_URL_TABELA_CUSTO = 'https://pub-809552f3b06e437abec2dd924c2a9407.r2.dev/.gz';
 window.PERFIS_R2 = null;
 async function carregarTabelaCustoDoR2(){
-  if(window.PERFIS_R2 && window.PERFIS_R2.length) return window.PERFIS_R2;
   try{
     var aviso=document.getElementById('tcBody');
-    if(aviso) aviso.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center">⏳ Baixando perfis do R2 (44MB .gz)...</td></tr>';
+    if(aviso) aviso.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center">⏳ Baixando perfis do R2...</td></tr>';
     var resp=await fetch(R2_URL_TABELA_CUSTO);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
     var buf=await resp.arrayBuffer();
     var ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
     var txt=await new Response(ds).text();
     var dados=JSON.parse(txt);
-    if(!Array.isArray(dados)) dados=dados.perfis||dados.data||dados.items||Object.values(dados);
+    if(!Array.isArray(dados)) dados=dados.perfis||dados.data||Object.values(dados);
     function mapear(it,i){
-      var cod=String(it.cod||it.codigo||it.code||it.id||('PERFIL-'+(i+1))).trim();
-      var nome=String(it.nome||it.name||it.descricao||it.desc||('Perfil '+cod)).trim();
-      var cat=it.cat||it.categoria||'Perfis';
-      var linha=it.linha||'MG25';
-      var acab=String(it.acab||'BR').substring(0,2).toUpperCase();
-      var kgBarra=Number(it.kgBarra||it.peso||2.5);
-      var kgm=Number(it.kgm||0.5);
-      return {cod:cod,nome:nome,cat:cat,linha:linha,acab:acab,kgBarra:isFinite(kgBarra)?kgBarra:2.5,kgm:isFinite(kgm)?kgm:0.5,barLen:6000,seed:i,sug:45.03,unit:'KG'};
+      var cod=String(it.cod||it.codigo||it.code||('PERFIL-'+(i+1))).trim();
+      var nome=String(it.nome||it.name||it.descricao||('Perfil '+cod)).trim();
+      return {cod:cod,nome:nome,cat:it.cat||'Perfis',linha:it.linha||'MG25',acab:String(it.acab||'BR').substring(0,2).toUpperCase(),kgBarra:Number(it.kgBarra||2.5),kgm:Number(it.kgm||0.5),barLen:6000,seed:i,sug:45.03,unit:'KG'};
     }
     var lista=[];
     for(var i=0;i<dados.length;i++) lista.push(mapear(dados[i],i));
     window.PERFIS_R2=lista;
     try{ Object.keys(DATA_MAP).forEach(function(k){ delete DATA_MAP[k]; }); }catch(e){}
     if(typeof renderTcTable==='function') renderTcTable();
-    if(typeof renderTcFiltros==='function') renderTcFiltros();
-    if(typeof renderTcTabs==='function') renderTcTabs();
     return lista;
   }catch(e){
-    console.error('Erro R2',e);
-    var aviso2=document.getElementById('tcBody');
-    if(aviso2) aviso2.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:#e74c3c">Erro R2: '+e.message+' - Usando dados locais</td></tr>';
+    console.error('R2 erro',e);
     if(typeof renderTcTable==='function') renderTcTable();
     return null;
   }
 }
 
-/* ---------- PERFIS ESPECIAIS ---------- */
-const ESPECIAIS = (function () {
-  const r = mulberry32(4242);
-  const nomes = [
-    ['Tubo quadrado 20x20x1,20', 'Tubos'], ['Tubo quadrado 25x25x1,20', 'Tubos'], ['Tubo quadrado 30x30x1,50', 'Tubos'], ['Tubo quadrado 40x40x1,50', 'Tubos'],
-    ['Tubo quadrado 50x50x2,00', 'Tubos'], ['Tubo retangular 20x30x1,20', 'Tubos'], ['Tubo retangular 30x50x1,50', 'Tubos'], ['Tubo retangular 40x80x2,00', 'Tubos'],
-    ['Tubo retangular 50x100x2,00', 'Tubos'], ['Cantoneira 1/2"x1/8"', 'Cantoneiras'], ['Cantoneira 3/4"x1/8"', 'Cantoneiras'], ['Cantoneira 1"x1/8"', 'Cantoneiras'],
-    ['Cantoneira 1.1/2"x1/8"', 'Cantoneiras'], ['Barra chata 1/2"x1/8"', 'Barras'], ['Barra chata 3/4"x1/8"', 'Barras'], ['Barra chata 1"x3/16"', 'Barras'],
-    ['Perfil U 1/2"x1/2"', 'Perfis U'], ['Perfil U 3/4"x3/4"', 'Perfis U'], ['Perfil U 1"x1"', 'Perfis U'], ['Barra redonda 3/8"', 'Barras'],
-    ['Tubo redondo 1"', 'Tubos'], ['Tubo redondo 1.1/2"', 'Tubos'], ['Perfil T 1"x1"', 'Diversos'], ['Corrimão oval 50x25', 'Diversos'], ['Perfil H 1"', 'Diversos']
-  ];
-  const acabs = ['BR', 'PT', 'BZ', 'BF', 'BG'];
-  const out = [];
-  for (let i = 0; i < 135; i++) {
-    const nm = nomes[i % nomes.length];
-    const kgBarra = r2(0.8 + r() * 5.2);
-    out.push({ cod: 'ESP-' + String(i + 1).padStart(3, '0'), nome: nm[0], cat: nm[1], linha: 'Especiais', acab: acabs[Math.floor(i / nomes.length) % acabs.length], kgBarra, kgm: r2(kgBarra / 6), barLen: 6000, seed: 50000 + i, sug: 49.90, unit: 'BARRA' });
-  }
-  return out;
-})();').value, tipologias: [], valor: 0, status: 'Orçamento', orc: orcPadrao(), criado: d.toISOString().slice(0, 10) };
-  DB.obras.push(o); save();
-  toast('Obra salva com sucesso!');
-  go('obra', { id: o.id });
-}
-
-/* ---------- MODAL CLIENTE ---------- */
+/* ---------- PERFIS ESPECIAIS ---------- *//* ---------- MODAL CLIENTE ---------- */
 function modalCliente(cliId, after) {
   const c = cliId ? cliById(cliId) : { nome: '', email: '', tel: '', end: '' };
   openModal(cliId ? 'Editar Cliente' : 'Novo Cliente', `
@@ -1087,7 +1040,8 @@ if (!DB) {
   save();
 }
 applySidebar();
-setTimeout(function(){ if(typeof carregarTabelaCustoDoR2==='function'){ carregarTabelaCustoDoR2().finally(function(){ go('tabela'); }); } else { go('tabela'); } }, 100);
+go('tabela');
+setTimeout(function(){ try{ carregarTabelaCustoDoR2(); }catch(e){} }, 800);
 </script>
 </body>
 </html>
