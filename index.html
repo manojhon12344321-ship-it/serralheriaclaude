@@ -190,43 +190,43 @@ let PERFIS = (function () {
 const R2_URL_TABELA_CUSTO = 'https://pub-809552f3b06e437abec2dd924c2a9407.r2.dev/.gz';
 window.PERFIS_R2 = null;
 async function carregarTabelaCustoDoR2(){
-  if(window.PERFIS_R2) return window.PERFIS_R2;
+  if(window.PERFIS_R2 && window.PERFIS_R2.length) return window.PERFIS_R2;
   try{
-    const aviso = document.getElementById('tcBody');
-    if(aviso) aviso.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center">⏳ Baixando perfis do R2 (44MB .gz)...</td></tr>';
-    const resp = await fetch(R2_URL_TABELA_CUSTO);
+    var aviso=document.getElementById('tcBody');
+    if(aviso) aviso.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center">⏳ Baixando perfis do R2 (44MB .gz)...</td></tr>';
+    var resp=await fetch(R2_URL_TABELA_CUSTO);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const buf = await resp.arrayBuffer();
-    const ds = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
-    const txt = await new Response(ds).text();
-    let dados = JSON.parse(txt);
-    if(!Array.isArray(dados)) dados = dados.perfis || dados.data || dados.items || Object.values(dados);
-    const mapear = (it, i) => {
-      const cod = String(it.cod || it.codigo || it.code || it.id || ('PERFIL-'+(i+1))).trim();
-      const nome = String(it.nome || it.name || it.descricao || it.desc || it.title || ('Perfil ' + cod)).trim();
-      const cat = it.cat || it.categoria || it.category || 'Perfis';
-      const linha = it.linha || it.line || it.sistema || 'MG25';
-      let acab = String(it.acab || it.acabamento || 'BR').substring(0,2).toUpperCase();
-      const kgBarra = Number(it.kgBarra || it.pesoBarra || it.peso || it.kg || 2.5);
-      const kgm = Number(it.kgm || it.kgM || it.kgBarra / 6 || 0.5);
-      const barLen = Number(it.barLen || it.comprimento || 6000);
-      return { cod, nome, cat, linha, acab, kgBarra: isFinite(kgBarra)?kgBarra:2.5, kgm: isFinite(kgm)?kgm:0.5, barLen: isFinite(barLen)?barLen:6000, seed: it.seed || i, sug: 45.03, unit: 'KG' };
-    };
-    const lista = dados.map(mapear).filter(x=>x.cod);
-    window.PERFIS_R2 = lista;
-    Object.keys(DATA_MAP).forEach(k=>{ delete DATA_MAP[k]; });
-    if(typeof renderTcTable === 'function') renderTcTable();
-    if(typeof renderTcFiltros === 'function') renderTcFiltros();
+    var buf=await resp.arrayBuffer();
+    var ds=new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+    var txt=await new Response(ds).text();
+    var dados=JSON.parse(txt);
+    if(!Array.isArray(dados)) dados=dados.perfis||dados.data||dados.items||Object.values(dados);
+    function mapear(it,i){
+      var cod=String(it.cod||it.codigo||it.code||it.id||('PERFIL-'+(i+1))).trim();
+      var nome=String(it.nome||it.name||it.descricao||it.desc||('Perfil '+cod)).trim();
+      var cat=it.cat||it.categoria||'Perfis';
+      var linha=it.linha||'MG25';
+      var acab=String(it.acab||'BR').substring(0,2).toUpperCase();
+      var kgBarra=Number(it.kgBarra||it.peso||2.5);
+      var kgm=Number(it.kgm||0.5);
+      return {cod:cod,nome:nome,cat:cat,linha:linha,acab:acab,kgBarra:isFinite(kgBarra)?kgBarra:2.5,kgm:isFinite(kgm)?kgm:0.5,barLen:6000,seed:i,sug:45.03,unit:'KG'};
+    }
+    var lista=[];
+    for(var i=0;i<dados.length;i++) lista.push(mapear(dados[i],i));
+    window.PERFIS_R2=lista;
+    try{ Object.keys(DATA_MAP).forEach(function(k){ delete DATA_MAP[k]; }); }catch(e){}
+    if(typeof renderTcTable==='function') renderTcTable();
+    if(typeof renderTcFiltros==='function') renderTcFiltros();
+    if(typeof renderTcTabs==='function') renderTcTabs();
     return lista;
   }catch(e){
-    console.error('Erro R2:', e);
-    const aviso = document.getElementById('tcBody');
-    if(aviso) aviso.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:#e74c3c">❌ Erro ao carregar R2: '+e.message+' - Usando dados locais (2145 perfis)</td></tr>';
-    if(typeof renderTcTable === 'function') renderTcTable();
+    console.error('Erro R2',e);
+    var aviso2=document.getElementById('tcBody');
+    if(aviso2) aviso2.innerHTML='<tr><td colspan="7" style="padding:24px;text-align:center;color:#e74c3c">Erro R2: '+e.message+' - Usando dados locais</td></tr>';
+    if(typeof renderTcTable==='function') renderTcTable();
     return null;
   }
 }
-/* =========== FIM R2 =========== */
 
 /* ---------- PERFIS ESPECIAIS ---------- */
 const ESPECIAIS = (function () {
@@ -247,516 +247,249 @@ const ESPECIAIS = (function () {
     out.push({ cod: 'ESP-' + String(i + 1).padStart(3, '0'), nome: nm[0], cat: nm[1], linha: 'Especiais', acab: acabs[Math.floor(i / nomes.length) % acabs.length], kgBarra, kgm: r2(kgBarra / 6), barLen: 6000, seed: 50000 + i, sug: 49.90, unit: 'BARRA' });
   }
   return out;
-})();
-
-/* ---------- COMPONENTES DA TIPOLOGIA (19 itens base JC200) ---------- */
-const COMPS = [
-  { c: 'BATMINI', d: 'Batente mini PVC', u: 'pç', q: 4, emb: 10, sug: 9.50, meu: 1.53, s: 'f', cat: 'Acessórios' },
-  { c: 'CAL039', d: 'Calço de apoio para vidro', u: 'pç', q: 8, emb: 100, sug: 0.18, meu: 0.12, s: 'n', cat: 'Acessórios' },
-  { c: 'CON370', d: 'Conector de canto', u: 'pç', q: 4, emb: 20, sug: 1.10, meu: 0.85, s: 'f', cat: 'Acessórios' },
-  { c: 'FEC636', d: 'Fecho trava sem chave', u: 'pç', q: 1, emb: 1, sug: 24.90, meu: 18.40, s: 'fecho', cat: 'Fechos' },
-  { c: 'FIT206', d: 'Fita dupla face 19mm (rolo)', u: 'rl', q: 0.2, emb: 1, sug: 26.47, meu: 19.30, s: 'p', cat: 'Vedações' },
-  { c: 'ROL440', d: 'Roldana dupla regulável', u: 'pç', q: 4, emb: 4, sug: 6.80, meu: 5.20, s: 'n', cat: 'Roldanas', correr: true },
-  { c: 'ESC550', d: 'Escova de vedação 5x5mm', u: 'm', q: 9.74, emb: 50, sug: 0.45, meu: 0.32, s: 'p', cat: 'Vedações' },
-  { c: 'GUA100', d: 'Guarnição EPDM para vidro', u: 'm', q: 10.2, emb: 50, sug: 0.65, meu: 0.48, s: 'p', cat: 'Vedações' },
-  { c: 'PAR420', d: 'Parafuso AA 4,2x13 cabeça panela', u: 'pç', q: 24, emb: 100, sug: 0.09, meu: 0.06, s: 'f', cat: 'Fixação' },
-  { c: 'PAR432', d: 'Parafuso AA 4,2x32 cabeça chata', u: 'pç', q: 12, emb: 100, sug: 0.12, meu: 0.08, s: 'f', cat: 'Fixação' },
-  { c: 'BUC006', d: 'Bucha de nylon nº 6', u: 'pç', q: 8, emb: 100, sug: 0.08, meu: 0.05, s: 'f', cat: 'Fixação' },
-  { c: 'TER010', d: 'Terminal de trilho', u: 'pç', q: 4, emb: 10, sug: 1.90, meu: 1.35, s: 'f', cat: 'Acessórios', correr: true },
-  { c: 'PUX201', d: 'Puxador concha', u: 'pç', q: 2, emb: 2, sug: 7.90, meu: 5.60, s: 'n', cat: 'Puxadores' },
-  { c: 'BAT220', d: 'Batedor de folha', u: 'pç', q: 2, emb: 10, sug: 1.40, meu: 0.95, s: 'n', cat: 'Acessórios' },
-  { c: 'CAN312', d: 'Canto de baguete', u: 'pç', q: 8, emb: 50, sug: 0.35, meu: 0.22, s: 'n', cat: 'Acessórios', bag: true },
-  { c: 'SIL280', d: 'Silicone neutro 280g', u: 'tb', q: 0.5, emb: 1, sug: 28.90, meu: 21.50, s: 'p', cat: 'Vedações' },
-  { c: 'DRE110', d: 'Dreno para trilho', u: 'pç', q: 2, emb: 20, sug: 0.70, meu: 0.434, s: 'f', cat: 'Acessórios', correr: true },
-  { c: 'TAM090', d: 'Tampa de dreno', u: 'pç', q: 2, emb: 20, sug: 0.55, meu: 0.38, s: 'f', cat: 'Acessórios', correr: true },
-  { c: 'GUI330', d: 'Guia superior de folha', u: 'pç', q: 4, emb: 32, sug: 2.60, meu: 1.97, s: 'n', cat: 'Acessórios', correr: true }
-];
-const FECHOS = {
-  'TRAVA SEM CHAVE': { c: 'FEC636', d: 'Fecho trava sem chave', emb: 1, sug: 24.90 },
-  'BICO PAPAGAIO': { c: 'FEC640', d: 'Fecho bico de papagaio', emb: 1, sug: 32.50 },
-  'CREMONA': { c: 'FEC700', d: 'Fecho cremona com haste', emb: 1, sug: 58.90 }
-};
-
-const COMP_TAB = (function () {
-  const out = COMPS.map(c => ({ cod: c.c, nome: c.d, cat: c.cat, linha: 'Componentes', acab: 'BR', sug: c.sug, unit: c.u === 'm' ? 'M' : 'UN', seed: 0 }));
-  out.push({ cod: 'FEC640', nome: 'Fecho bico de papagaio', cat: 'Fechos', linha: 'Componentes', acab: 'BR', sug: 32.50, unit: 'UN', seed: 0 });
-  out.push({ cod: 'FEC700', nome: 'Fecho cremona com haste', cat: 'Fechos', linha: 'Componentes', acab: 'BR', sug: 58.90, unit: 'UN', seed: 0 });
-  const r = mulberry32(777);
-  const gen = [
-    ['ROL', 'Roldana simples', 'Roldanas', 'UN'], ['ROL', 'Roldana dupla com rolamento', 'Roldanas', 'UN'], ['FEC', 'Fecho concha', 'Fechos', 'UN'],
-    ['FEC', 'Fecho lateral', 'Fechos', 'UN'], ['FEC', 'Fecho central com chave', 'Fechos', 'UN'], ['ESC', 'Escova vedação', 'Vedações', 'M'],
-    ['GUA', 'Guarnição EPDM', 'Vedações', 'M'], ['PAR', 'Parafuso auto-atarraxante', 'Fixação', 'UN'], ['SIL', 'Silicone acético', 'Vedações', 'UN']
-  ];
-  for (let i = 0; i < 120; i++) {
-    const g = gen[i % gen.length];
-    const cod = g[0] + '-' + String(800 + i).padStart(3, '0');
-    out.push({ cod, nome: g[1] + ' ' + (i + 1), cat: g[2], linha: 'Componentes', acab: 'BR', sug: r2(0.5 + r() * 50), unit: g[3], seed: 0 });
-  }
-  return out;
-})();
-
-const VID_TAB = (function () {
-  const out = [
-    { cod: 'VID-001', nome: 'Vidro liso incolor 4mm', cat: 'Liso', linha: 'Vidros', acab: 'BR', sug: 85.00, unit: 'M²' },
-    { cod: 'VID-002', nome: 'Vidro liso incolor 6mm', cat: 'Liso', linha: 'Vidros', acab: 'BR', sug: 110.00, unit: 'M²' },
-    { cod: 'VID-003', nome: 'Vidro temperado incolor 8mm', cat: 'Temperado', linha: 'Vidros', acab: 'BR', sug: 195.00, unit: 'M²' }
-  ];
-  const r = mulberry32(999);
-  const tipos = ['Liso', 'Temperado', 'Laminado', 'Refletivo', 'Jateado'];
-  for (let i = 3; i < 45; i++) {
-    const t = tipos[i % tipos.length];
-    out.push({ cod: 'VID-' + String(i + 1).padStart(3, '0'), nome: `Vidro ${t} ${4 + (i % 4) * 2}mm`, cat: t, linha: 'Vidros', acab: 'BR', sug: r2(80 + r() * 250), unit: 'M²' });
-  }
-  return out;
-})();
-
-/* =========================================================
-   TIPOLOGIAS
-   ========================================================= */
-const TIPS = [
-  { id: 'jc200', cod: 'JC200', nome: 'Janela de Correr 2 Folhas', cat: 'Janela', m2: 2.2, perfis: ['MG25-016', 'MG25-118', 'MG25-101'], comps: COMPS.map(c => c.c), vid: 'VID-002' }
-];
-const TIP_BY = Object.fromEntries(TIPS.map(t => [t.id, t]));
-
-function calcTipologia(tip, params) {
-  const r = mulberry32(params.seed || 1);
-  const w = params.w || 2000, h = params.h || 1500;
-  const m2Total = (w * h) / 1e6;
-  const kgObra = r2((w * 2 + h * 2) / 1000 * 0.8 + r() * 0.5);
-  const kgCompra = r2(kgObra * 1.15);
-  const perfis = (tip.perfis || []).map(cod => {
-    const p = PERFIS.find(x => x.cod === cod) || PERFIS[0];
-    return { cod, d: p.nome, kgObra: kgObra / tip.perfis.length, kgCompra: kgCompra / tip.perfis.length, barras: 1, qtd: 2 };
-  });
-  const comps = COMPS.map(c => ({ c: c.c, d: c.d, u: c.u, emb: c.emb, sug: c.sug, qtd: c.q * (m2Total || 1) }));
-  const vidros = [{ c: tip.vid || 'VID-002', d: 'Vidro', w, h, m2: m2Total, kg: m2Total * 10, qtd: 1, sug: 110 }];
-  return { m2Total, kgObra, kgCompra, perfis, comps, vidros };
+})();').value, tipologias: [], valor: 0, status: 'Orçamento', orc: orcPadrao(), criado: d.toISOString().slice(0, 10) };
+  DB.obras.push(o); save();
+  toast('Obra salva com sucesso!');
+  go('obra', { id: o.id });
 }
 
-/* =========================================================
-   DB - LOCAL STORAGE
-   ========================================================= */
-const LS = 'suprema_v3681';
-function load() { try { return JSON.parse(localStorage.getItem(LS)); } catch (e) { return null; } }
-function save() { localStorage.setItem(LS, JSON.stringify(DB)); }
-function seed() {
-  return {
-    clientes: [{ id: 'c1', nome: 'Cliente Demo', tel: '(11) 99999-9999', email: 'demo@suprema.com' }],
-    obras: [{
-      id: 'o4', clienteId: 'c1', nome: 'Obra Demo Paulo', status: 'Orçamento', valor: 0,
-      tipologias: [{ tip: 'jc200', qtd: 2, params: { w: 2000, h: 1500, linha: 'MG25', acab: 'BR', seed: 1 } }],
-      orc: { modoPerfis: 'obra', modoComps: 'obra', prodModo: 'bruto', custoKg: 8.5, instModo: 'M2', custoInst: 50, margem: 35, impostos: 8 }
-    }],
-    custos: { 'PERFIL_KG': 45.03 },
-    custosTabela: {},
-    vendas: [],
-    verificado: false,
-    faturaPaga: false
-  };
-}
-let DB;
-function obraById(id) { return DB.obras.find(o => o.id === id); }
-function clienteById(id) { return DB.clientes.find(c => c.id === id); }
-const preco = (key, sug) => (DB.custos[key] > 0 ? DB.custos[key] : sug);
-function resetDemo() {
-  openModal('Restaurar dados', '<p class="text-sm">Todos os dados salvos neste navegador serão apagados e os dados de demonstração serão restaurados. Deseja continuar?</p>', () => { localStorage.removeItem(LS); location.reload(); }, { saveLabel: 'RESTAURAR' });
-}
-
-/* =========================================================
-   MATERIAIS E ORÇAMENTO DA OBRA
-   ========================================================= */
-function materiaisObra(obra) {
-  const P = {}, C = {}, V = {};
-  let m2Esq = 0, pecas = 0;
-  const pk = preco('PERFIL_KG', 45.03);
-  const custoTip = [];
-  obra.tipologias.forEach(t => {
-    const tip = TIP_BY[t.tip];
-    const res = calcTipologia(tip, t.params);
-    const q = num(t.qtd) || 1;
-    pecas += q;
-    m2Esq += res.m2Total * q;
-    let ct = res.kgObra * pk;
-    res.perfis.forEach(x => {
-      const a = P[x.cod] || (P[x.cod] = { cod: x.cod, d: x.d, kgObra: 0, kgCompra: 0, barras: 0, qtd: 0 });
-      a.kgObra += x.kgObra * q; a.kgCompra += x.kgCompra * q; a.barras += x.barras * q; a.qtd += x.qtd * q;
-    });
-    res.comps.forEach(x => {
-      const a = C[x.c] || (C[x.c] = { c: x.c, d: x.d, u: x.u, emb: x.emb, sug: x.sug, qtd: 0 });
-      a.qtd += x.qtd * q;
-      ct += x.qtd * q * preco(x.c, x.sug);
-    });
-    res.vidros.forEach(x => {
-      const a = V[x.c] || (V[x.c] = { c: x.c, d: x.d, sug: x.sug, m2: 0, kg: 0, pcs: 0 });
-      a.m2 += x.m2 * q; a.kg += x.kg * q; a.pcs += x.qtd * q;
-      ct += x.m2 * q * preco(x.c, x.sug);
-    });
-    custoTip.push(ct);
-  });
-  const perfis = Object.values(P);
-  const kgObra = r3(perfis.reduce((s, x) => s + x.kgObra, 0));
-  const kgCompra = r3(perfis.reduce((s, x) => s + x.kgCompra, 0));
-  const comps = Object.values(C).map(a => {
-    a.qtd = r3(a.qtd);
-    a.compraQtd = Math.ceil(a.qtd / a.emb - 1e-9) * a.emb;
-    a.preco = preco(a.c, a.sug);
-    a.vObra = a.qtd * a.preco;
-    a.vCompra = a.compraQtd * a.preco;
-    return a;
-  });
-  const vidros = Object.values(V).map(a => { a.preco = preco(a.c, a.sug); a.valor = r2(a.m2 * a.preco); return a; });
-  const m2Vidro = vidros.reduce((s, x) => s + x.m2, 0);
-  return {
-    perfis, comps, vidros, kgObra, kgCompra, m2Esq, m2Vidro, pecas, custoTip, precoKg: pk,
-    perfisObra: r2(kgObra * pk), perfisCompra: r2(kgCompra * pk),
-    compsObra: r2(comps.reduce((s, x) => s + x.vObra, 0)), compsCompra: r2(comps.reduce((s, x) => s + x.vCompra, 0)),
-    vidrosTotal: r2(vidros.reduce((s, x) => s + x.valor, 0))
-  };
-}
-function orcCalc(obra) {
-  const m = materiaisObra(obra);
-  const o = obra.orc;
-  const perf = o.modoPerfis === 'compra' ? m.perfisCompra : m.perfisObra;
-  const comp = o.modoComps === 'compra' ? m.compsCompra : m.compsObra;
-  const mat = r2(perf + comp + m.vidrosTotal);
-  const prod = r2((o.prodModo === 'bruto' ? m.kgCompra : m.kgObra) * num(o.custoKg));
-  const instBase = o.instModo === 'KG' ? m.kgObra : o.instModo === 'M2' ? m.m2Esq : m.pecas;
-  const inst = r2(instBase * num(o.custoInst));
-  const custo = r2(mat + prod + inst);
-  const lucro = r2(custo * num(o.margem) / 100);
-  const imp = Math.min(Math.max(num(o.impostos), 0), 95);
-  const bruto = r2(custo + lucro);
-  const impostos = r2(bruto / (1 - imp / 100) - bruto);
-  const precoFinal = r2(bruto + impostos);
-  const somaCt = m.custoTip.reduce((s, x) => s + x, 0);
-  let acum = 0;
-  const itens = obra.tipologias.map((t, i) => {
-    let v;
-    if (i === obra.tipologias.length - 1) v = r2(precoFinal - acum);
-    else { v = r2(somaCt > 0 ? precoFinal * m.custoTip[i] / somaCt : precoFinal / obra.tipologias.length); acum = r2(acum + v); }
-    const desc = t.desconto || 0;
-    return { tip: TIP_BY[t.tip], qtd: t.qtd, valor: v, desconto: desc, subtotal: r2(v * (1 - desc / 100)) };
-  });
-  const total = r2(itens.reduce((s, x) => s + x.subtotal, 0));
-  return { mat, prod, inst, custo, lucro, impostos, preco: precoFinal, total, itens, matObra: r2(m.perfisObra + m.compsObra + m.vidrosTotal), matCompra: r2(m.perfisCompra + m.compsCompra + m.vidrosTotal) };
-}
-
-/* =========================================================
-   HELPERS UI
-   ========================================================= */
-function toast(msg, tipo = 'ok') {
-  const root = $('toast-root');
-  const el = document.createElement('div');
-  el.className = `toast pointer-events-auto px-4 py-3 rounded-lg shadow-lg text-sm font-semibold text-white ${tipo === 'erro' ? 'bg-red-500' : tipo === 'info' ? 'bg-blue-500' : 'bg-[#00A99D]'}`;
-  el.textContent = msg;
-  root.appendChild(el);
-  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(-10px)'; setTimeout(() => el.remove(), 300); }, 3000);
-}
-function openModal(titulo, conteudo, onSave, opts = {}) {
-  const root = $('modal-root');
-  root.innerHTML = `<div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"><div class="bg-white rounded-lg shadow-xl w-full max-w-lg"><div class="px-5 py-4 border-b flex justify-between items-center"><h3 class="font-bold text-gray-700">${titulo}</h3><button onclick="document.getElementById('modal-root').innerHTML=''" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button></div><div class="p-5">${conteudo}</div><div class="px-5 py-3 border-t flex justify-end gap-2"><button onclick="document.getElementById('modal-root').innerHTML=''" class="btn btn-ghost">CANCELAR</button><button id="modalSave" class="btn btn-teal">${opts.saveLabel || 'SALVAR'}</button></div></div></div>`;
-  $('modalSave').onclick = () => { const r = onSave(); if (r !== false) root.innerHTML = ''; };
-}
-function toggleDD(e, id) { e.stopPropagation(); document.querySelectorAll('.dd').forEach(d => { if (d.id !== id) d.classList.add('hidden'); }); $(id).classList.toggle('hidden'); }
-function toggleSidebar() {
-  const sb = $('sidebar'), ov = $('overlay');
-  const isOpen = sb.style.transform === 'translateX(0%)';
-  sb.style.transform = isOpen ? 'translateX(-100%)' : 'translateX(0%)';
-  ov.style.display = isOpen ? 'none' : 'block';
-}
-function closeSidebarMobile() { $('sidebar').style.transform = 'translateX(-100%)'; $('overlay').style.display = 'none'; }
-function applySidebar() {
-  if (window.innerWidth >= 1024) { $('sidebar').style.transform = 'translateX(0%)'; $('wrap').style.paddingLeft = '16rem'; }
-  else { $('sidebar').style.transform = 'translateX(-100%)'; $('wrap').style.paddingLeft = '0'; }
-}
-function renderBanners() {
-  const b = $('banners');
-  let html = '';
-  if (!DB.verificado) html += `<div class="bg-yellow-50 border-b border-yellow-300 px-4 py-3 flex items-center justify-between gap-3"><div class="text-sm"><b class="text-yellow-800">Verifique sua conta</b><span class="text-yellow-700 ml-2">Confirme seu e-mail para liberar todas as funções.</span></div><button onclick="verificarConta()" class="btn btn-blue text-xs">VERIFICAR</button></div>`;
-  if (!DB.faturaPaga) html += `<div class="bg-blue-50 border-b border-blue-300 px-4 py-3 flex items-center justify-between gap-3"><div class="text-sm text-blue-800"><b>Fatura disponível</b> - Novembro/2026 - R$99,90</div><button onclick="go('planos')" class="btn btn-blue text-xs">PAGAR</button></div>`;
-  b.innerHTML = html;
-}
-function verificarConta() {
-  openModal('Verificar Conta', `<label class="lbl">E-mail</label><input id="vfEmail" class="inp" placeholder="seu@email.com"><label class="lbl">Telefone</label><input id="vfTel" class="inp" placeholder="(11) 99999-9999" oninput="maskPhone(this)"><p id="vfErr" class="hidden text-xs text-red-500 mt-2">Informe e-mail e telefone válidos.</p>`, () => {
-    const em = $('vfEmail').value.trim(), tel = $('vfTel').value.replace(/\D/g, '');
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em) || tel.length < 10) { $('vfErr').classList.remove('hidden'); return false; }
-    DB.verificado = true; save(); renderBanners(); toast('Conta verificada com sucesso!');
-  }, { saveLabel: 'VERIFICAR' });
-}
-
-/* =========================================================
-   MENU E ROTEAMENTO
-   ========================================================= */
-const ICONS = {
-  obras: 'M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1M9 13h1m4 0h1M9 17h1m4 0h1',
-  servicos: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z',
-  projetos: 'M4 4h16v16H4zM12 4v16M4 12h16',
-  clientes: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  fornecedores: 'M1 3h15v13H1zM16 8h4l3 3v5h-7zM5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
-  vendas: 'M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4zM3 6h18M16 10a4 4 0 0 1-8 0',
-  lote: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
-  agenda: 'M3 4h18v18H3zM16 2v4M8 2v4M3 10h18',
-  financeiro: 'M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6',
-  tabela: 'M3 3h18v18H3zM3 9h18M3 15h18M9 3v18',
-  planos: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z',
-  novidades: 'M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13',
-  sair: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9'
-};
-const MENU = [
-  ['obras', 'Minhas Obras'], ['servicos', 'Meus Serviços'], ['projetos', 'Meus Projetos'], ['clientes', 'Meus Clientes'],
-  ['fornecedores', 'Meus Fornecedores'], ['vendas', 'Minhas Vendas'], ['lote', 'Produção em Lote'], ['agenda', 'Minha Agenda'],
-  ['financeiro', 'Financeiro'], ['tabela', 'Tabela de Custos de Materiais'], ['sair', 'Sair']
-];
-const MENU_PAI = { obra: 'obras', novaObra: 'obras', pesquisaTip: 'obras', tipDetalhe: 'obras', orcamento: 'obras', cliente: 'clientes' };
-function renderMenu(view) {
-  const ativo = MENU_PAI[view] || view;
-  $('menu').innerHTML = MENU.map(([k, l]) => `
-    <button onclick="go('${k}')" class="menu-item ${ativo === k ? 'active' : ''} w-full flex items-center gap-3 px-5 py-3 text-sm text-left hover:bg-white/10 ${k === 'sair' ? 'border-t border-white/10 mt-2' : ''}">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ICONS[k]}"/></svg>
-      <span>${l}</span>
-    </button>`).join('');
-}
-
-let state = { view: 'tabela', params: {} };
-const VIEWS = {};
-const AFTER = {};
-function go(view, params = {}) {
-  state = { view, params };
-  render();
-  closeSidebarMobile();
-  window.scrollTo(0, 0);
-}
-function render() {
-  renderMenu(state.view);
-  renderBanners();
-  $('app').innerHTML = VIEWS[state.view](state.params);
-  if (AFTER[state.view]) AFTER[state.view](state.params);
-}
-function pageHeader(titulo, sub, acoes = '') {
-  return `<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-    <div><h1 class="text-xl sm:text-2xl font-bold text-gray-700">${titulo}</h1>${sub ? `<p class="text-sm text-gray-500">${sub}</p>` : ''}</div>
-    <div class="flex flex-wrap gap-2">${acoes}</div></div>`;
-}
-function vazio(msg, botao) {
-  return `<div class="bg-white rounded-lg shadow p-8 sm:p-12 text-center">
-    <svg class="mx-auto mb-3 text-gray-300" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7h18v13H3zM3 7l3-4h12l3 4M9 12h6"/></svg>
-    <p class="text-gray-500 mb-5">${msg}</p>${botao || ''}</div>`;
-}
-
-/* =========================================================
-   TABELA DE CUSTOS DE MATERIAIS
-   ========================================================= */
-const TABS = [['KG', 'PERFIS/KG'], ['BARRA', 'PERFIS/BARRA'], ['ESP', 'PERFIS ESPECIAIS/BARRA'], ['COMP', 'COMPONENTES'], ['VID', 'VIDROS']];
-const POR_PAG = 15;
-let T = { tab: 'BARRA', q: '', linha: 'Todas', cat: 'Todas', acab: 'Todos', page: 1 };
-const DATA_MAP = {};
-function tabData(tab = T.tab) { const basePerfis = (window.PERFIS_R2 && window.PERFIS_R2.length) ? window.PERFIS_R2 : PERFIS; return tab === 'KG' || tab === 'BARRA' ? basePerfis : tab === 'ESP' ? ESPECIAIS : tab === 'COMP' ? COMP_TAB : VID_TAB; }
-function itemTab(tab, cod) {
-  const key = (tab === 'KG' || tab === 'BARRA') ? 'P' : tab;
-  if (!DATA_MAP[key]) DATA_MAP[key] = Object.fromEntries(tabData(tab).map(x => [x.cod, x]));
-  return DATA_MAP[key][cod];
-}
-function unidadeTab(tab, item) { return tab === 'KG' ? 'KG' : tab === 'BARRA' || tab === 'ESP' ? 'BARRA' : tab === 'COMP' ? item.unit : 'M²'; }
-function filtrados() {
-  const q = T.q.trim().toLowerCase();
-  return tabData().filter(x =>
-    (!q || x.cod.toLowerCase().includes(q) || x.nome.toLowerCase().includes(q)) &&
-    (T.linha === 'Todas' || x.linha === T.linha) &&
-    (T.cat === 'Todas' || x.cat === T.cat) &&
-    (T.acab === 'Todos' || x.acab === T.acab));
-}
-function pageList(cur, total) {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  if (cur <= 2) return [1, 2, 3, '…', total];
-  if (cur >= total - 2) return [1, '…', total - 3, total - 2, total - 1, total];
-  const pages = [1, cur - 1, cur, cur + 1, total].filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b);
-  const out = [];
-  pages.forEach((p, i) => { if (i > 0 && p - pages[i - 1] > 1) out.push('…'); out.push(p); });
-  return out;
-}
-
-VIEWS.tabela = () => `
-  <div class="bg-white rounded-lg shadow p-3 sm:p-5">
-    <h1 class="text-xl sm:text-2xl font-bold text-gray-700">Tabela de Custos de Materiais</h1>
-    <p class="mt-2 text-xs sm:text-sm font-semibold text-yellow-800 bg-yellow-100 border border-yellow-300 rounded px-3 py-2 inline-block">IMPORTANTE: Você tem configurado os custos dos perfis default como R$/Kg</p>
-    <div id="tcTabs" class="mt-4 flex overflow-x-auto border-b"></div>
-    <div id="tcFiltros" class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
-    <div id="tcTabelaBox" class="mt-4 overflow-x-auto border rounded">
-      <table class="tbl w-full text-sm min-w-[780px]"><thead id="tcHead"></thead><tbody id="tcBody"></tbody></table>
-    </div>
-    <div id="tcPag" class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3"></div>
-  </div>`;
-AFTER.tabela = () => { renderTcTabs(); renderTcFiltros(); renderTcTable(); if(typeof carregarTabelaCustoDoR2 === 'function') carregarTabelaCustoDoR2(); };
-
-function renderTcTabs() {
-  $('tcTabs').innerHTML = TABS.map(([k, l]) => `<button onclick="tcSetTab('${k}')" class="px-4 py-3 text-xs sm:text-sm font-bold whitespace-nowrap border-b-4 ${T.tab === k ? 'border-[#00A99D] text-[#00A99D]' : 'border-transparent text-gray-500 hover:text-gray-700'}">${l}</button>`).join('');
-}
-function tcSetTab(k) { T = { tab: k, q: '', linha: 'Todas', cat: 'Todas', acab: 'Todos', page: 1 }; renderTcTabs(); renderTcFiltros(); renderTcTable(); }
-function renderTcFiltros() {
-  const perfil = T.tab === 'KG' || T.tab === 'BARRA';
-  const cats = ['Todas', ...Array.from(new Set(tabData().map(x => x.cat))).sort()];
-  const linhas = ['Todas', ...LINHAS.map(l => l[0])];
-  const acabAtual = T.acab === 'Todos' ? null : ACAB_BY[T.acab];
-  $('tcFiltros').innerHTML = `
-    <div><label class="lbl !mt-0">Código ou Nome</label><input id="tcQ" class="inp" placeholder="Buscar..." value="${esc(T.q)}" oninput="T.q=this.value;T.page=1;renderTcTable()"></div>
-    <div><label class="lbl !mt-0">Categoria</label><select id="tcCat" class="inp" onchange="T.cat=this.value;T.page=1;renderTcTable()">${cats.map(c => `<option ${T.cat===c?'selected':''}>${c}</option>`).join('')}</select></div>
-    ${perfil ? `<div><label class="lbl !mt-0">Linha</label><select id="tcLinha" class="inp" onchange="T.linha=this.value;T.page=1;renderTcTable()">${linhas.map(l => `<option ${T.linha===l?'selected':''}>${l}</option>`).join('')}</select></div>` : '<div></div>'}
-    ${perfil ? `<div><label class="lbl !mt-0">Acabamento</label><select id="tcAcab" class="inp" onchange="T.acab=this.value;T.page=1;renderTcTable()"><option ${T.acab==='Todos'?'selected':''}>Todos</option>${ACABS.map(a => `<option value="${a.k}" ${T.acab===a.k?'selected':''}>${a.n}</option>`).join('')}</select>${acabAtual ? `<div class="mt-1 flex items-center gap-1 text-xs">${dot(acabAtual.k)} ${acabAtual.n}</div>` : ''}</div>` : '<div></div>'}
-  `;
-}
-function renderTcTable() {
-  const dados = filtrados();
-  const total = dados.length;
-  const totalPag = Math.max(1, Math.ceil(total / POR_PAG));
-  if (T.page > totalPag) T.page = totalPag;
-  const ini = (T.page - 1) * POR_PAG;
-  const pag = dados.slice(ini, ini + POR_PAG);
-  const tab = T.tab;
-  $('tcHead').innerHTML = `<tr><th>Código</th><th>Descrição</th><th>Categoria</th>${tab==='KG'||tab==='BARRA'?'<th>Linha</th><th>Acab</th>':''}<th class="text-right">Sugerido</th><th class="text-right">Meu Custo</th><th>Ação</th></tr>`;
-  $('tcBody').innerHTML = pag.map(x => {
-    const key = tab + '|' + x.cod;
-    const meu = DB.custosTabela[key];
-    return `<tr>
-      <td class="font-semibold">${esc(x.cod)}</td>
-      <td>${esc(x.nome)}</td>
-      <td>${esc(x.cat)}</td>
-      ${tab==='KG'||tab==='BARRA'?`<td>${esc(x.linha)}</td><td>${dot(x.acab)} ${esc(x.acab)}</td>`:''}
-      <td class="text-right">${brl(x.sug)}${tab==='BARRA'||tab==='ESP' ? '/barra' : ''}</td>
-      <td class="text-right font-bold ${meu ? 'text-[#00A99D]' : 'text-gray-400'}">${meu ? brl(meu) : '—'}</td>
-      <td><button onclick="tcEditar('${tab}','${esc(x.cod)}')" class="btn btn-ghost text-xs border">EDITAR</button></td>
-    </tr>`;
-  }).join('') || `<tr><td colspan="7" class="text-center py-8 text-gray-500">Nenhum material encontrado. ${window.PERFIS_R2 ? '('+window.PERFIS_R2.length+' perfis do R2 carregados)' : ''}</td></tr>`;
-  $('tcPag').innerHTML = `
-    <div class="text-xs text-gray-500">${total} itens · Página ${T.page} de ${totalPag} ${window.PERFIS_R2 ? '· <b class="text-[#00A99D]">'+window.PERFIS_R2.length+' do R2</b>' : '· 2145 locais'}</div>
-    <div class="flex items-center gap-1 flex-wrap">
-      <button class="pg-btn" ${T.page===1?'disabled':''} onclick="tcGo(${T.page-1})">&lt;</button>
-      ${pageList(T.page, totalPag).map(p => p==='…' ? `<span class="px-2 text-gray-400">…</span>` : `<button class="pg-btn ${p===T.page?'cur':''}" onclick="tcGo(${p})">${p}</button>`).join('')}
-      <button class="pg-btn" ${T.page===totalPag?'disabled':''} onclick="tcGo(${T.page+1})">&gt;</button>
-    </div>`;
-}
-function tcGo(p) {
-  T.page = p;
-  renderTcTable();
-  const box = $('tcTabelaBox');
-  if (box && box.getBoundingClientRect().top < 120) window.scrollTo({ top: box.offsetTop - 140, behavior: 'smooth' });
-}
-function tcEditar(tab, cod) {
-  const x = itemTab(tab, cod);
-  const un = unidadeTab(tab, x);
-  const key = tab + '|' + cod;
-  const atual = DB.custosTabela[key] || '';
-  openModal('Alterar Custo Material', `
-    <p class="text-sm font-semibold text-gray-700">(${x.cod}) ${esc(x.nome)}</p>
-    <p class="text-xs text-gray-500 mt-1">Valor sugerido: ${tab === 'BARRA' || tab === 'ESP' ? brl(x.sug * x.kgBarra) : brl(x.sug)}/${un}</p>
-    <label class="lbl">Meu custo (R$/${un})</label>
-    <input id="mcVal" type="number" step="0.01" min="0" class="inp" value="${atual}" placeholder="0,00">
-    <p id="mcErr" class="hidden text-xs text-red-500 mt-1">Informe um valor válido (maior ou igual a zero).</p>`,
+/* ---------- MODAL CLIENTE ---------- */
+function modalCliente(cliId, after) {
+  const c = cliId ? cliById(cliId) : { nome: '', email: '', tel: '', end: '' };
+  openModal(cliId ? 'Editar Cliente' : 'Novo Cliente', `
+    <label class="lbl !mt-0">Nome*</label><input id="mcNome" class="inp" placeholder="Nome do cliente" value="${esc(c.nome)}">
+    <p id="mcNomeErr" class="hidden text-xs text-red-500 mt-1">O nome do cliente é obrigatório.</p>
+    <label class="lbl">E-mail</label><input id="mcEmail" type="email" class="inp" placeholder="eijejejekele@gmail.com" value="${esc(c.email)}">
+    <p id="mcEmailErr" class="hidden text-xs text-red-500 mt-1">E-mail inválido.</p>
+    <label class="lbl">Telefone</label><input id="mcTel" class="inp" inputmode="numeric" placeholder="(73)99978-8982" maxlength="14" oninput="maskPhone(this)" value="${esc(c.tel)}">
+    <label class="lbl">Endereço</label><input id="mcEnd" class="inp" placeholder="Abílio Alves Fernandes" value="${esc(c.end)}">`,
     () => {
-      const raw = $('mcVal').value;
-      const v = num(raw);
-      if (raw === '' || v < 0) { $('mcErr').classList.remove('hidden'); $('mcVal').classList.add('err'); return false; }
-      if (v === 0) delete DB.custosTabela[key]; else DB.custosTabela[key] = r2(v);
-      save(); renderTcTable(); toast('Custos carregados com sucesso!');
+      const nome = $('mcNome').value.trim(), email = $('mcEmail').value.trim();
+      const emailOk = !email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
+      $('mcNomeErr').classList.toggle('hidden', !!nome); $('mcNome').classList.toggle('err', !nome);
+      $('mcEmailErr').classList.toggle('hidden', emailOk); $('mcEmail').classList.toggle('err', !emailOk);
+      if (!nome || !emailOk) return false;
+      let id = cliId;
+      if (cliId) Object.assign(cliById(cliId), { nome, email, tel: $('mcTel').value, end: $('mcEnd').value.trim() });
+      else { id = uid(); DB.clientes.push({ id, nome, email, tel: $('mcTel').value, end: $('mcEnd').value.trim() }); }
+      save();
+      toast('Cliente salvo com sucesso!');
+      if (after) after(id);
     });
 }
 
-/* CONTINUA NA PARTE 2... */);
-
-/* =========================================================
-   MINHAS OBRAS
-   ========================================================= */
-function badgeStatus(s) {
-  const c = s === 'Vendida' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700';
-  return `<span class="inline-block text-[11px] font-bold px-2 py-0.5 rounded ${c}">${s}</span>`;
-}
-VIEWS.obras = () => {
-  const grupos = DB.clientes.map(c => ({ c, obras: DB.obras.filter(o => o.clienteId === c.id) })).filter(g => g.obras.length);
-  const btn = `<button onclick="go('novaObra')" class="btn btn-blue">+ CRIAR NOVA OBRA</button>`;
-  if (!grupos.length) return pageHeader('Minhas Obras', 'Gerencie suas obras', btn) + vazio('Nenhuma obra cadastrada.', btn);
-  return pageHeader('Minhas Obras', `${DB.obras.length} obras`, btn) + grupos.map(g => `
-    <div class="bg-white rounded-lg shadow p-4 mb-4">
-      <div class="font-bold text-gray-700 mb-2">${esc(g.c.nome)} · ${esc(g.c.tel)}</div>
-      ${g.obras.map(o => `<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t py-3 first:border-0">
-        <div><b>${esc(o.nome)}</b> ${badgeStatus(o.status)}<div class="text-xs text-gray-500">${o.tipologias.length} tipologias · ${brl(o.valor)}</div></div>
-        <div class="flex gap-2"><button onclick="go('obra',{id:'${o.id}'})" class="btn btn-ghost border text-xs">VER</button><button onclick="go('orcamento',{id:'${o.id}'})" class="btn btn-teal text-xs">ORÇAR</button></div>
-      </div>`).join('')}
-    </div>`).join('');
-};
-
+/* ---------- OBRA DETALHE ---------- */
+let custosFiltro = 'todos';
 VIEWS.obra = p => {
   const o = obraById(p.id);
-  const m = materiaisObra(o);
-  return pageHeader(`Obra: ${esc(o.nome)}`, `${o.tipologias.length} tipologias`, `<button onclick="go('obras')" class="btn btn-ghost border">VOLTAR</button><button onclick="go('orcamento',{id:'${o.id}'})" class="btn btn-teal">ORÇAMENTO</button>`) + `
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-    <div class="bg-white rounded-lg shadow p-4">
-      <h3 class="font-bold text-gray-700 border-b pb-2">Resumo Materiais</h3>
-      <div class="mt-3 text-sm space-y-1">
-        <div class="flex justify-between"><span>Kg Obra</span><b>${fmt(m.kgObra,3)}</b></div>
-        <div class="flex justify-between"><span>Kg Compra</span><b>${fmt(m.kgCompra,3)}</b></div>
-        <div class="flex justify-between"><span>M² Esquadria</span><b>${fmt(m.m2Esq,3)}</b></div>
-        <div class="flex justify-between"><span>Peças</span><b>${m.pecas}</b></div>
-      </div>
+  if (!o) return vazio('Obra não encontrada.', `<button onclick="go('obras')" class="btn btn-blue">VOLTAR</button>`);
+  const tab = p.tab || 'tip';
+  const c = cliById(o.clienteId);
+  return `
+  <button onclick="go('obras')" class="text-sm text-[#00A99D] font-semibold mb-2 hover:underline">← Minhas Obras</button>
+  <div class="bg-white rounded-lg shadow p-4 sm:p-5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl sm:text-2xl font-bold text-gray-700">Obra Nº ${o.numero}</h1>
+      <p class="text-sm text-gray-500">${esc(o.nome)} · ${esc(o.descricao)} · Cliente: <b>${esc(c ? c.nome : '-')}</b> · Entrega: ${dataBR(o.entrega)}</p>
     </div>
-    <div class="lg:col-span-2 bg-white rounded-lg shadow p-4">
-      <h3 class="font-bold text-gray-700 border-b pb-2">Tipologias</h3>
-      <div class="mt-3 space-y-2">${o.tipologias.map(t => {
-        const tip = TIP_BY[t.tip];
-        return `<div class="flex justify-between text-sm border rounded p-2"><span><b>${tip.cod}</b> - ${tip.nome} x${t.qtd}</span><span>${t.params.w}x${t.params.h}</span></div>`;
-      }).join('') || '<p class="text-sm text-gray-500">Nenhuma tipologia</p>'}</div>
-      <button onclick="go('pesquisaTip',{obraId:'${o.id}'})" class="btn btn-blue mt-3">+ INCLUIR TIPOLOGIA</button>
-    </div>
-  </div>`;
+    <div class="flex flex-wrap items-center gap-2">${badgeStatus(o.status)}<span class="text-lg font-extrabold text-[#00A99D]">${brl(o.valor)}</span>
+      <button onclick="go('orcamento',{id:'${o.id}',step:1})" class="btn btn-blue">IR PARA ORÇAMENTO</button></div>
+  </div>
+  <div class="flex border-b mb-4 overflow-x-auto">
+    <button onclick="go('obra',{id:'${o.id}',tab:'tip'})" class="px-4 py-3 text-sm font-bold whitespace-nowrap border-b-4 ${tab === 'tip' ? 'border-[#00A99D] text-[#00A99D]' : 'border-transparent text-gray-500'}">1. TIPOLOGIAS DA OBRA</button>
+    <button onclick="go('obra',{id:'${o.id}',tab:'custos'})" class="px-4 py-3 text-sm font-bold whitespace-nowrap border-b-4 ${tab === 'custos' ? 'border-[#00A99D] text-[#00A99D]' : 'border-transparent text-gray-500'}">2. CUSTOS DE COMPRA</button>
+  </div>
+  ${tab === 'tip' ? tipologiasObraHTML(o) : `<div id="custosBox">${custosCompraHTML(o)}</div>`}`;
 };
-
-VIEWS.novaObra = () => {
-  return pageHeader('Nova Obra', 'Preencha os dados', `<button onclick="go('obras')" class="btn btn-ghost border">VOLTAR</button>`) + `
-  <div class="bg-white rounded-lg shadow p-4 max-w-2xl">
-    <label class="lbl">Cliente</label><select id="noCliente" class="inp">${DB.clientes.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select>
-    <label class="lbl">Nome da Obra</label><input id="noNome" class="inp" placeholder="Ex: Residência Silva">
-    <label class="lbl">Status</label><select id="noStatus" class="inp"><option>Orçamento</option><option>Vendida</option></select>
-    <button onclick="criarObra()" class="btn btn-teal w-full mt-4">CRIAR OBRA</button>
-  </div>`;
-};
-function criarObra() {
-  const clienteId = $('noCliente').value, nome = $('noNome').value.trim(), status = $('noStatus').value;
-  if (!nome) { toast('Informe o nome da obra', 'erro'); return; }
-  const o = { id: uid(), clienteId, nome, status, valor: 0, tipologias: [], orc: { modoPerfis: 'obra', modoComps: 'obra', prodModo: 'bruto', custoKg: 8.5, instModo: 'M2', custoInst: 50, margem: 35, impostos: 8 } };
-  DB.obras.push(o); save(); go('obra', { id: o.id }); toast('Obra criada!');
+function tipologiasObraHTML(o) {
+  const btn = `<button onclick="go('pesquisaTip',{obraId:'${o.id}'})" class="btn btn-blue">+ INCLUIR TIPOLOGIA</button>`;
+  if (!o.tipologias.length) return vazio('Nenhuma tipologia incluída nesta obra.', btn);
+  return `<div class="flex justify-end mb-3">${btn}</div><div class="space-y-3">
+    ${o.tipologias.map((t, i) => {
+      const tip = TIP_BY[t.tip], p = t.params;
+      return `<div class="bg-white rounded-lg shadow p-4 flex flex-col sm:flex-row gap-4">
+        <div class="shrink-0 self-center">${janelaSVG(tip, 130, 93)}</div>
+        <div class="flex-1 min-w-0">
+          <div class="font-extrabold text-gray-800">${tip.cod}</div>
+          <div class="text-sm text-gray-600">${tip.nome}</div>
+          <div class="text-xs text-gray-500 mt-1">L ${p.L} x H ${p.H} mm · Linha ${p.linha} · ${p.acab} · ${p.vidroTipo} ${p.vidroEsp} · Fecho ${p.fecho}</div>
+          <div class="flex items-center gap-2 mt-3">
+            <span class="text-xs font-semibold text-gray-500">Qtd:</span>
+            <button onclick="alterarQtdTip('${o.id}',${i},-1)" class="w-8 h-8 rounded border font-bold hover:bg-gray-100">−</button>
+            <span class="w-8 text-center font-bold">${t.qtd}</span>
+            <button onclick="alterarQtdTip('${o.id}',${i},1)" class="w-8 h-8 rounded border font-bold hover:bg-gray-100">+</button>
+          </div>
+        </div>
+        <div class="flex sm:flex-col gap-2 justify-end">
+          <button onclick="verListaTip('${o.id}',${i})" class="btn btn-outline">LISTA</button>
+          <button onclick="go('tipDetalhe',{obraId:'${o.id}',cod:'${tip.cod}',idx:${i}})" class="btn btn-teal">EDITAR</button>
+          <button onclick="removerTip('${o.id}',${i})" class="btn btn-red">REMOVER</button>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+}
+function alterarQtdTip(oid, i, d) {
+  const o = obraById(oid);
+  o.tipologias[i].qtd = Math.max(1, (num(o.tipologias[i].qtd) || 1) + d);
+  o.valor = orcCalc(o).total; save(); render();
+}
+function removerTip(oid, i) {
+  const o = obraById(oid);
+  openModal('Remover tipologia', `<p class="text-sm">Deseja remover a tipologia <b>${o.tipologias[i].tip}</b> desta obra?</p>`, () => {
+    o.tipologias.splice(i, 1); o.valor = o.tipologias.length ? orcCalc(o).total : 0; save(); render(); toast('Tipologia removida.');
+  }, { saveLabel: 'REMOVER' });
+}
+function verListaTip(oid, i) {
+  const o = obraById(oid), t = o.tipologias[i];
+  openModal('Lista Técnica - ' + t.tip, listaHTML(calcTipologia(TIP_BY[t.tip], t.params)), null, { wide: true });
 }
 
+/* ---------- PESQUISA TIPOLOGIA ---------- */
+let PT = { chips: [], q: '' };
 VIEWS.pesquisaTip = p => {
   const o = obraById(p.obraId);
-  return pageHeader('Incluir Tipologia', `Obra: ${esc(o.nome)}`, `<button onclick="go('obra',{id:'${o.id}'})" class="btn btn-ghost border">VOLTAR</button>`) + `
-  <div class="bg-white rounded-lg shadow p-4">
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-      <div><label class="lbl !mt-0">Largura (mm)</label><input id="ptW" type="number" class="inp" value="2000"></div>
-      <div><label class="lbl !mt-0">Altura (mm)</label><input id="ptH" type="number" class="inp" value="1500"></div>
-      <div><label class="lbl !mt-0">Qtd</label><input id="ptQtd" type="number" class="inp" value="1" min="1"></div>
-    </div>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-      ${LINHAS.map(l => `<button onclick="ptLinha='${l[0]}';renderPT()" class="chip ${typeof ptLinha !== 'undefined' && ptLinha===l[0] ? 'on' : ''}">${l[0]}</button>`).join('')}
-    </div>
-    <div id="ptLista" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-  </div>`;
+  PT = { chips: [], q: '' };
+  return `
+  <button onclick="go('obra',{id:'${o.id}'})" class="text-sm text-[#00A99D] font-semibold mb-2 hover:underline">← Obra Nº ${o.numero}</button>
+  ${pageHeader('Incluir Tipologia', 'Pesquise e selecione a tipologia para a obra ' + o.numero)}
+  <div class="bg-white rounded-lg shadow p-4 mb-4">
+    <div id="ptChips" class="flex flex-wrap gap-2"></div>
+    <input class="inp mt-3" placeholder="Pesquisar por Linha / Nome / Código" oninput="PT.q=this.value;renderPT('${o.id}')">
+  </div>
+  <div id="ptList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>`;
 };
-let ptLinha = 'MG25';
-function renderPT() {
-  const el = $('ptLista');
-  if (!el) return;
-  el.innerHTML = TIPS.map(t => `<div class="border rounded p-3 flex justify-between items-center"><div><b>${t.cod}</b><div class="text-xs text-gray-500">${t.nome}</div></div><button onclick="addTip('${t.id}')" class="btn btn-teal text-xs">+ INCLUIR</button></div>`).join('');
+AFTER.pesquisaTip = p => renderPT(p.obraId);
+function togglePTChip(i, oid) {
+  const ch = CHIPS[i];
+  PT.chips = PT.chips.includes(ch) ? PT.chips.filter(x => x !== ch) : [...PT.chips, ch];
+  renderPT(oid);
 }
-AFTER.pesquisaTip = () => { ptLinha = 'MG25'; renderPT(); };
-function addTip(tipId) {
-  const obraId = state.params.obraId;
-  const w = num($('ptW').value) || 2000, h = num($('ptH').value) || 1500, qtd = num($('ptQtd').value) || 1;
-  const o = obraById(obraId);
-  o.tipologias.push({ tip: tipId, qtd, params: { w, h, linha: ptLinha, acab: 'BR', seed: Math.floor(Math.random()*10000) } });
-  o.valor = orcCalc(o).total; save(); go('obra', { id: obraId }); toast('Tipologia incluída!');
+function renderPT(oid) {
+  $('ptChips').innerHTML = CHIPS.map((c, i) => `<span onclick="togglePTChip(${i},'${oid}')" class="chip ${PT.chips.includes(c) ? 'on' : ''}">${c}</span>`).join('') +
+    (PT.chips.length ? `<span onclick="PT.chips=[];renderPT('${oid}')" class="text-xs text-gray-500 underline cursor-pointer self-center ml-1">limpar</span>` : '');
+  const q = PT.q.trim().toLowerCase();
+  const lista = TIPOLOGIAS.filter(t => PT.chips.every(c => t.tags.includes(c)) && (!q || t.cod.toLowerCase().includes(q) || t.nome.toLowerCase().includes(q) || t.linha.toLowerCase().includes(q)));
+  $('ptList').innerHTML = lista.length ? lista.map(t => `
+    <div onclick="go('tipDetalhe',{obraId:'${oid}',cod:'${t.cod}'})" class="bg-white rounded-lg shadow p-4 cursor-pointer hover:ring-2 hover:ring-[#00A99D] flex gap-3 items-center">
+      <div class="shrink-0">${janelaSVG(t, 96, 69)}</div>
+      <div class="min-w-0"><div class="font-extrabold text-gray-800">${t.cod}</div><div class="text-sm text-gray-600">${t.nome}</div><div class="text-xs text-gray-400 mt-1">Linha ${t.linha}</div>
+      <div class="flex flex-wrap gap-1 mt-2">${t.tags.map(g => `<span class="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">${g}</span>`).join('')}</div></div>
+    </div>`).join('') : `<div class="col-span-full bg-white rounded-lg shadow p-8 text-center text-gray-500">Nenhuma tipologia encontrada.</div>`;
 }
 
-/* =========================================================
-   CUSTOS DE COMPRA DA OBRA
-   ========================================================= */
+/* ---------- DETALHE TIPOLOGIA ---------- */
+function selHTML(id, label, opcoes, val) {
+  return `<div><label class="lbl">${label}</label><select id="${id}" class="inp">${opcoes.map(x => `<option ${String(x) === String(val) ? 'selected' : ''}>${x}</option>`).join('')}</select></div>`;
+}
+function numHTML(id, label, val, min, max) {
+  return `<div><label class="lbl">${label} <span class="text-gray-400 font-normal">MIN ${min} MAX ${max}</span></label>
+    <input id="${id}" type="number" class="inp" value="${val}" data-min="${min}" data-max="${max}" oninput="validarNum(this)">
+    <p id="${id}_err" class="hidden text-xs text-red-500 mt-1">Valor deve estar entre ${min} e ${max}.</p></div>`;
+}
+function validarNum(el) {
+  const v = el.value === '' ? NaN : num(el.value), mi = num(el.dataset.min), ma = num(el.dataset.max);
+  const ok = !isNaN(v) && v >= mi && v <= ma;
+  el.classList.toggle('err', !ok);
+  $(el.id + '_err').classList.toggle('hidden', ok);
+  return ok;
+}
+VIEWS.tipDetalhe = p => {
+  const o = obraById(p.obraId), tip = TIP_BY[p.cod];
+  const edit = p.idx !== undefined && o.tipologias[p.idx];
+  const v = edit ? o.tipologias[p.idx].params : paramsPadrao(tip);
+  return `
+  <button onclick="go('${edit ? 'obra' : 'pesquisaTip'}',{${edit ? `id:'${o.id}'` : `obraId:'${o.id}'`}})" class="text-sm text-[#00A99D] font-semibold mb-2 hover:underline">← Voltar</button>
+  ${pageHeader(tip.cod, tip.nome + ' · Obra Nº ' + o.numero)}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-lg shadow p-4 flex flex-col items-center">
+      ${janelaSVG(tip, 240, 172)}
+      <div class="font-extrabold mt-3">${tip.cod}</div><div class="text-sm text-gray-500 text-center">${tip.nome}</div>
+    </div>
+    <div class="lg:col-span-2 space-y-4">
+      <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="font-bold text-[#00A99D] border-b pb-2">DIMENSÕES</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+          ${selHTML('tp_linha', 'Linha', ['Suprema', 'Gold', 'Prime2.5'], v.linha)}
+          ${selHTML('tp_mao', 'Mão', ['Amigo Estreito SEM Reforço', 'Amigo Estreito COM Reforço', 'Amigo Largo SEM Reforço'], v.mao)}
+          ${numHTML('tp_L', 'Largura L (mm)', v.L, LIM.L[0], LIM.L[1])}
+          ${numHTML('tp_H', 'Altura H (mm)', v.H, LIM.H[0], LIM.H[1])}
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="font-bold text-[#00A99D] border-b pb-2">PERFIS</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+          ${selHTML('tp_acab', 'Acabamento', ACABS.map(a => a.n), v.acab)}
+          ${selHTML('tp_corComp', 'Cor Componente', ['Branco', 'Preto', 'Bronze'], v.corComp)}
+          ${selHTML('tp_arremate', 'Arremate', Object.keys(ARREMATES), v.arremate)}
+          ${selHTML('tp_contramarco', 'Contramarco', Object.keys(CONTRAMARCOS), v.contramarco)}
+          ${numHTML('tp_folga', 'Folga LJ (mm)', v.folga, LIM.folga[0], LIM.folga[1])}
+          ${selHTML('tp_fecho', 'Fecho', Object.keys(FECHOS), v.fecho)}
+        </div>
+      </div>
+      <div class="bg-white rounded-lg shadow p-4">
+        <h3 class="font-bold text-[#00A99D] border-b pb-2">VIDROS</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+          ${selHTML('tp_vidroTipo', 'Tipo', Object.keys(VIDRO_PREF), v.vidroTipo)}
+          ${selHTML('tp_vidroEsp', 'Espessura', ['6mm', '4mm'], v.vidroEsp)}
+        </div>
+      </div>
+      <div class="flex justify-end"><button onclick="gerarLista('${o.id}','${tip.cod}',${edit ? p.idx : -1})" class="btn btn-blue">GERAR LISTA DE MATERIAIS</button></div>
+      <div id="listaTec"></div>
+    </div>
+  </div>`;
+};
+function lerTipForm() {
+  return {
+    linha: $('tp_linha').value, mao: $('tp_mao').value, L: num($('tp_L').value), H: num($('tp_H').value),
+    acab: $('tp_acab').value, corComp: $('tp_corComp').value, arremate: $('tp_arremate').value, contramarco: $('tp_contramarco').value,
+    folga: num($('tp_folga').value), fecho: $('tp_fecho').value, vidroTipo: $('tp_vidroTipo').value, vidroEsp: $('tp_vidroEsp').value
+  };
+}
+function tipFormValido() {
+  const a = validarNum($('tp_L')), b = validarNum($('tp_H')), c = validarNum($('tp_folga'));
+  if (!(a && b && c)) { toast('Corrija os campos fora dos limites MIN/MAX.', 'erro'); return false; }
+  return true;
+}
+function gerarLista(oid, cod, idx) {
+  if (!tipFormValido()) return;
+  const res = calcTipologia(TIP_BY[cod], lerTipForm());
+  $('listaTec').innerHTML = `<div class="bg-white rounded-lg shadow p-4">
+    <h3 class="font-bold text-gray-700 text-lg mb-3">Lista Técnica</h3>${listaHTML(res)}
+    <div class="flex justify-end mt-4"><button onclick="salvarTipologia('${oid}','${cod}',${idx})" class="btn btn-green">SALVAR TIPOLOGIA</button></div></div>`;
+  $('listaTec').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function salvarTipologia(oid, cod, idx) {
+  if (!tipFormValido()) return;
+  const o = obraById(oid);
+  const params = lerTipForm();
+  if (idx >= 0 && o.tipologias[idx]) o.tipologias[idx].params = params;
+  else o.tipologias.push({ tip: cod, params, qtd: 1, desconto: 0 });
+  o.valor = orcCalc(o).total;
+  save();
+  toast('Tipologia salva com sucesso!');
+  go('obra', { id: oid });
+}
+function listaHTML(res) {
+  return `
+  <div class="text-sm font-bold text-[#00A99D] mt-1 mb-1">PERFIS</div>
+  <div class="overflow-x-auto border rounded"><table class="tbl w-full text-sm min-w-[560px]">
+    <thead><tr><th>Código</th><th>Descrição</th><th class="text-right">Qtd</th><th class="text-right">Corte (mm)</th><th class="text-right">Barra</th><th class="text-right">Peso (Kg)</th></tr></thead>
+    <tbody>${res.perfis.map(x => `<tr><td class="font-semibold">${x.cod}</td><td>${x.d}</td><td class="text-right">${x.qtd}</td><td class="text-right">${x.corte}</td><td class="text-right">${x.barras}</td><td class="text-right">${fmt(x.kgObra, 3)}</td></tr>`).join('')}</tbody>
+    <tfoot><tr class="bg-gray-50 font-bold"><td colspan="4">Total Kg (obra) · Necessidade de compra: ${fmt(r3(res.kgCompra), 3)} Kg</td><td class="text-right">${res.perfis.reduce((s, x) => s + x.barras, 0)}</td><td class="text-right">${fmt(r3(res.kgObra), 3)}</td></tr></tfoot>
+  </table></div>
+  <div class="text-sm font-bold text-[#00A99D] mt-4 mb-1">COMPONENTES</div>
+  <div class="overflow-x-auto border rounded"><table class="tbl w-full text-sm min-w-[480px]">
+    <thead><tr><th>Código</th><th>Descrição</th><th class="text-right">Qtd</th><th>Un.</th></tr></thead>
+    <tbody>${res.comps.map(x => `<tr><td class="font-semibold">${x.c}</td><td>${x.d}</td><td class="text-right">${fmt(x.qtd, Number.isInteger(x.qtd) ? 0 : 2)}</td><td>${x.u}</td></tr>`).join('')}</tbody>
+  </table></div>
+  <div class="text-sm font-bold text-[#00A99D] mt-4 mb-1">VIDROS</div>
+  <div class="overflow-x-auto border rounded"><table class="tbl w-full text-sm min-w-[480px]">
+    <thead><tr><th>Código</th><th>Descrição</th><th class="text-right">Pçs</th><th class="text-right">Dimensões (mm)</th><th class="text-right">M²</th><th class="text-right">Kg</th></tr></thead>
+    <tbody>${res.vidros.map(x => `<tr><td class="font-semibold">${x.c}</td><td>${x.d}</td><td class="text-right">${x.qtd}</td><td class="text-right">${x.w}x${x.h}</td><td class="text-right">${fmt(x.m2, 3)}</td><td class="text-right">${fmt(x.kg, 3)}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+/* ---------- CUSTOS DE COMPRA ---------- */
 function custosItens(o) {
   const m = materiaisObra(o);
   const items = [];
@@ -770,50 +503,56 @@ function custosItens(o) {
   return items;
 }
 const preenchido = k => DB.custos[k] > 0;
-let custosFiltro = 'todos';
 function custosCompraHTML(o) {
   if (!o.tipologias.length) return vazio('Inclua tipologias na obra para listar os custos de compra.', `<button onclick="go('pesquisaTip',{obraId:'${o.id}'})" class="btn btn-blue">+ INCLUIR TIPOLOGIA</button>`);
   const items = custosItens(o);
   const ok = items.filter(i => preenchido(i.key)).length;
   const lista = custosFiltro === 'pendentes' ? items.filter(i => !preenchido(i.key)) : items;
-  const grupos = {};
-  lista.forEach(i => { (grupos[i.g] = grupos[i.g] || []).push(i); });
+  const grupo = g => {
+    const todos = items.filter(i => i.g === g), vis = lista.filter(i => i.g === g);
+    if (!todos.length) return '';
+    return `<div class="bg-white rounded-lg shadow mb-4">
+      <div class="px-4 py-3 border-b font-bold text-gray-700 flex justify-between"><span>${g}</span><span class="text-sm text-gray-500">${todos.filter(i => preenchido(i.key)).length}/${todos.length}</span></div>
+      ${vis.length ? vis.map(i => {
+        const f = preenchido(i.key);
+        return `<div class="px-4 py-3 border-b last:border-0 flex flex-col md:flex-row md:items-center gap-2">
+          <div class="flex-1 min-w-0"><div class="font-bold text-gray-800">${i.cod}</div><div class="text-xs text-gray-500">${esc(i.d)}</div></div>
+          <div class="flex flex-wrap items-center gap-2 text-sm">
+            <span class="text-gray-600">Sugerido: <b>${brl(i.sug)}/${i.u === 'KG' ? 'kg' : i.u}</b></span>
+            <button onclick="usarSugerido('${o.id}','${i.key}',${i.sug})" class="btn btn-outline !py-1 !px-3">USAR</button>
+            <button onclick="modalCustoMaterial('${o.id}','${i.key}')" class="btn text-white" style="background:${f ? '#2ECC71' : '#e74c3c'}">Meu custo ${brl(f ? DB.custos[i.key] : 0)}/${i.u}</button>
+          </div>
+        </div>`;
+      }).join('') : `<div class="px-4 py-4 text-sm text-gray-500">Nenhum item pendente.</div>`}
+    </div>`;
+  };
   return `
-  <div class="bg-white rounded-lg shadow p-4 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-    <div class="text-sm"><b>${ok}/${items.length}</b> custos preenchidos</div>
-    <div class="flex gap-2">
-      <button onclick="custosFiltro='todos';rerenderCustos('${o.id}')" class="chip ${custosFiltro==='todos'?'on':''}">Todos</button>
-      <button onclick="custosFiltro='pendentes';rerenderCustos('${o.id}')" class="chip ${custosFiltro==='pendentes'?'on':''}">Pendentes (${items.length-ok})</button>
-      <button onclick="usarSugeridos('${o.id}')" class="btn btn-ghost border text-xs">USAR SUGERIDOS</button>
+  <div class="bg-white rounded-lg shadow p-4 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+    <div><h2 class="text-lg font-bold text-gray-700">Custos de Compra <span class="text-[#00A99D]">${ok}/${items.length}</span></h2><p class="text-xs text-gray-500">Custos preenchidos / total de materiais da obra</p></div>
+    <div class="flex flex-wrap gap-2">
+      <div class="inline-flex rounded border overflow-hidden">
+        <button onclick="setCustosFiltro('${o.id}','todos')" class="px-4 py-2 text-sm font-semibold ${custosFiltro === 'todos' ? 'bg-[#00A99D] text-white' : 'bg-white text-gray-600'}">Todos</button>
+        <button onclick="setCustosFiltro('${o.id}','pendentes')" class="px-4 py-2 text-sm font-semibold ${custosFiltro === 'pendentes' ? 'bg-[#00A99D] text-white' : 'bg-white text-gray-600'}">Pendentes (${items.length - ok})</button>
+      </div>
+      <button onclick="usarTodosSugeridos('${o.id}')" class="btn btn-blue">USAR PREÇOS SUGERIDOS</button>
     </div>
   </div>
-  ${Object.entries(grupos).map(([g, its]) => `
-    <div class="bg-white rounded-lg shadow p-4 mb-4">
-      <h3 class="font-bold text-gray-700 border-b pb-2 mb-3">${g}</h3>
-      <div class="space-y-2">${its.map(i => {
-        const p = preenchido(i.key);
-        return `<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border rounded p-3 ${p?'bg-green-50 border-green-200':'bg-yellow-50 border-yellow-200'}">
-          <div class="text-sm"><b>${i.cod}</b> - ${esc(i.d)}<div class="text-xs text-gray-500">Sugerido: ${brl(i.sug)}/${i.u}</div></div>
-          <div class="flex items-center gap-2"><span class="text-sm font-bold">${p ? brl(DB.custos[i.key]) : 'Pendente'}</span><button onclick="modalCustoMaterial('${o.id}','${i.key}')" class="btn ${p?'btn-ghost border':'btn-teal'} text-xs">${p?'EDITAR':'PREENCHER'}</button></div>
-        </div>`;
-      }).join('')}</div>
-    </div>`).join('')}
-  <div class="flex justify-end"><button onclick="salvarCustosEIr('${o.id}')" class="btn btn-teal">SALVAR E IR PARA ORÇAMENTO</button></div>`;
+  ${grupo('Perfis')}${grupo('Componentes')}${grupo('Vidros')}
+  <div class="flex flex-col sm:flex-row justify-end gap-2">
+    <button onclick="go('orcamento',{id:'${o.id}',step:1})" class="btn btn-outline">IR PARA ORÇAMENTO</button>
+    <button onclick="salvarCustosEIr('${o.id}')" class="btn btn-teal">SALVAR E IR PARA ORÇAMENTO</button>
+  </div>`;
 }
-function rerenderCustos(oid) { $('app').innerHTML = VIEWS.custosCompra({ id: oid }); }
-VIEWS.custosCompra = p => {
-  const o = obraById(p.id);
-  return pageHeader(`Custos - ${esc(o.nome)}`, `${o.tipologias.length} tipologias`, `<button onclick="go('obra',{id:'${o.id}'})" class="btn btn-ghost border">VOLTAR</button>`) + custosCompraHTML(o);
-};
-function usarSugeridos(oid) {
+function rerenderCustos(oid) { const o = obraById(oid); o.valor = orcCalc(o).total; save(); $('custosBox').innerHTML = custosCompraHTML(o); }
+function setCustosFiltro(oid, f) { custosFiltro = f; rerenderCustos(oid); }
+function usarSugerido(oid, key, sug) { DB.custos[key] = sug; rerenderCustos(oid); toast('Custos carregados com sucesso!'); }
+function usarTodosSugeridos(oid) {
   const items = custosItens(obraById(oid));
   const pend = items.filter(i => !preenchido(i.key));
-  if (!pend.length) { openModal('Usar preços sugeridos', '<p class="text-sm">Todos os custos já estão preenchidos. Deseja substituir todos os seus custos pelos preços sugeridos?</p>', () => {
+  if (pend.length) { pend.forEach(i => DB.custos[i.key] = i.sug); rerenderCustos(oid); toast('Custos carregados com sucesso!'); return; }
+  openModal('Usar preços sugeridos', '<p class="text-sm">Todos os custos já estão preenchidos. Deseja substituir todos os seus custos pelos preços sugeridos?</p>', () => {
     items.forEach(i => DB.custos[i.key] = i.sug); rerenderCustos(oid); toast('Custos carregados com sucesso!');
-  }, { saveLabel: 'SUBSTITUIR' }); return; }
-  openModal('Usar preços sugeridos', `<p class="text-sm">Preencher ${pend.length} custos pendentes com preços sugeridos?</p>`, () => {
-    pend.forEach(i => DB.custos[i.key] = i.sug); rerenderCustos(oid); toast('Custos carregados com sucesso!');
-  }, { saveLabel: 'PREENCHER' });
+  }, { saveLabel: 'SUBSTITUIR' });
 }
 function modalCustoMaterial(oid, key) {
   const it = custosItens(obraById(oid)).find(i => i.key === key);
@@ -821,7 +560,7 @@ function modalCustoMaterial(oid, key) {
     <p class="text-sm font-bold text-gray-700">${it.cod}</p><p class="text-xs text-gray-500">${esc(it.d)}</p>
     <p class="text-xs text-gray-500 mt-2">Preço sugerido: ${brl(it.sug)}/${it.u}</p>
     <label class="lbl">Meu custo (R$/${it.u})</label>
-    <input id="mcmVal" type="number" min="0" step="0.01" class="inp" value="${'${DB.custos[key] || \'\'}'}" placeholder="0,00">
+    <input id="mcmVal" type="number" min="0" step="0.01" class="inp" value="${DB.custos[key] || ''}" placeholder="0,00">
     <p id="mcmErr" class="hidden text-xs text-red-500 mt-1">Informe um valor maior que zero.</p>`,
     () => {
       const v = num($('mcmVal').value);
@@ -840,35 +579,69 @@ const ETAPAS = ['Custos Materiais', 'Produção e Instalação', 'Ajuste de Pre�
 VIEWS.orcamento = p => {
   const o = obraById(p.id);
   const step = p.step || 1;
-  if (!o.tipologias.length) return `<button onclick="go('obra',{id:'${o.id}'})" class="text-sm text-[#00A99D] font-semibold mb-2">&larr; Voltar</button>` + vazio('Inclua tipologias na obra.', `<button onclick="go('pesquisaTip',{obraId:'${o.id}'})" class="btn btn-blue">+ INCLUIR TIPOLOGIA</button>`);
+  if (!o.tipologias.length) return `<button onclick="go('obra',{id:'${o.id}'})" class="text-sm text-[#00A99D] font-semibold mb-2 hover:underline">← Obra Nº ${o.numero}</button>` +
+    vazio('Esta obra ainda não possui tipologias. Inclua ao menos uma tipologia para gerar o orçamento.', `<button onclick="go('pesquisaTip',{obraId:'${o.id}'})" class="btn btn-blue">+ INCLUIR TIPOLOGIA</button>`);
   const c = orcCalc(o);
-  const nav = `<div class="flex gap-2 mb-4 overflow-x-auto">${ETAPAS.map((e, i) => `<button onclick="go('orcamento',{id:'${o.id}',step:${i+1}})" class="chip ${step===i+1?'on':''}">${i+1}. ${e}</button>`).join('')}</div>`;
-  let body = '';
-  if (step === 1) body = orcStep1(o, c);
-  else if (step === 2) body = orcStep2(o, c);
-  else body = `<div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">Etapa ${step} - ${ETAPAS[step-1]} (em desenvolvimento)</div>`;
-  return pageHeader(`Orçamento - ${esc(o.nome)}`, `Etapa ${step} de 6`, `<button onclick="go('obra',{id:'${o.id}'})" class="btn btn-ghost border">VOLTAR</button>`) + nav + body;
+  const corpo = [null, orcStep1, orcStep2, orcStep3, orcStep4, orcStep5, orcStep6][step](o, c);
+  return `
+  <button onclick="go('obra',{id:'${o.id}'})" class="text-sm text-[#00A99D] font-semibold mb-2 hover:underline no-print">← Obra Nº ${o.numero}</button>
+  ${pageHeader('Orçamento - Obra Nº ' + o.numero, 'Etapa ' + step + ' de 6 · ' + ETAPAS[step - 1])}
+  <div class="bg-white rounded-lg shadow p-3 mb-4 overflow-x-auto no-print">
+    <div class="flex items-center min-w-[640px]">
+      ${ETAPAS.map((e, i) => `
+        <div onclick="irEtapa('${o.id}',${i + 1})" class="flex items-center gap-2 cursor-pointer ${i < 5 ? 'flex-1' : ''}">
+          <div class="step-dot ${i + 1 === step ? 'bg-[#00A99D] text-white' : i + 1 < step ? 'bg-[#2ECC71] text-white' : 'bg-gray-200 text-gray-600'}">${i + 1 < step ? '✓' : i + 1}</div>
+          <span class="text-xs font-semibold ${i + 1 === step ? 'text-[#00A99D]' : 'text-gray-500'} whitespace-nowrap">${e}</span>
+          ${i < 5 ? '<div class="flex-1 h-0.5 bg-gray-200 mx-2"></div>' : ''}
+        </div>`).join('')}
+    </div>
+  </div>
+  ${corpo}`;
 };
-function navOrc(o, step) {
-  return `<div class="flex justify-between mt-4">${step>1?`<button onclick="go('orcamento',{id:'${o.id}',step:${step-1}})" class="btn btn-ghost border">VOLTAR</button>`:'<div></div>'}${step<6?`<button onclick="go('orcamento',{id:'${o.id}',step:${step+1}})" class="btn btn-teal">PRÓXIMO</button>`:`<button onclick="window.print()" class="btn btn-teal">IMPRIMIR</button>`}</div>`;
+function irEtapa(oid, s) {
+  if (state.params.step === 2 && s > 2 && !validarEtapa2()) return;
+  go('orcamento', { id: oid, step: s });
+}
+function navOrc(o, step, extra = '') {
+  return `<div class="flex flex-col sm:flex-row justify-between gap-2 mt-4 no-print">
+    <button onclick="${step === 1 ? `go('obra',{id:'${o.id}',tab:'custos'})` : `go('orcamento',{id:'${o.id}',step:${step - 1}})`}" class="btn btn-ghost border">VOLTAR</button>
+    <div class="flex flex-col sm:flex-row gap-2">${extra}${step < 6 ? `<button onclick="irEtapa('${o.id}',${step + 1})" class="btn btn-teal">PRÓXIMO</button>` : ''}</div></div>`;
+}
+function setOrc(oid, k, v, rerender) {
+  const o = obraById(oid); o.orc[k] = v; o.valor = orcCalc(o).total; save();
+  if (rerender) render();
+}
+function opcaoRadio(oid, campo, val, atual, titulo, valor, sub) {
+  const sel = atual === val;
+  return `<label class="flex items-center justify-between gap-3 border rounded-lg p-3 cursor-pointer ${sel ? 'border-[#00A99D] bg-teal-50' : 'border-gray-200'}">
+    <span class="flex items-center gap-2 text-sm font-semibold"><input type="radio" class="accent-[#00A99D] w-4 h-4" ${sel ? 'checked' : ''} onchange="setOrc('${oid}','${campo}','${val}',true)">${titulo}</span>
+    <span class="text-right"><b class="text-gray-800">${valor}</b><br><span class="text-xs text-gray-500">${sub}</span></span></label>`;
 }
 function orcStep1(o, c) {
-  return `<div class="bg-white rounded-lg shadow p-4">
-    <h3 class="font-bold text-gray-700">Materiais Necessários</h3>
-    <div class="mt-3 overflow-x-auto border rounded"><table class="tbl w-full text-sm min-w-[600px]">
-      <thead><tr><th>Material</th><th class="text-right">Qtd Obra</th><th class="text-right">Qtd Compra</th><th class="text-right">Preço</th><th class="text-right">Total Obra</th><th class="text-right">Total Compra</th></tr></thead>
-      <tbody>
-        <tr><td><b>Perfis</b> (${c.perfisObra?fmt(c.perfisObra,2):''})</td><td class="text-right">${fmt(c.perfisObra,2)}</td><td class="text-right">${fmt(c.perfisCompra,2)}</td><td class="text-right">${brl(c.precoKg)}/Kg</td><td class="text-right">${brl(c.perfisObra)}</td><td class="text-right">${brl(c.perfisCompra)}</td></tr>
-        ${c.comps.map(x => `<tr><td>${esc(x.d)}</td><td class="text-right">${fmt(x.qtd,3)}</td><td class="text-right">${fmt(x.compraQtd,3)}</td><td class="text-right">${brl(x.preco)}</td><td class="text-right">${brl(x.vObra)}</td><td class="text-right">${brl(x.vCompra)}</td></tr>`).join('')}
-        ${c.vidros.map(x => `<tr><td>${esc(x.d)}</td><td class="text-right">${fmt(x.m2,3)} m²</td><td class="text-right">-</td><td class="text-right">${brl(x.preco)}</td><td class="text-right">${brl(x.valor)}</td><td class="text-right">${brl(x.valor)}</td></tr>`).join('')}
-      </tbody>
-    </table></div>
-    <div class="text-sm font-bold text-[#00A99D] mt-4 mb-1">VIDROS</div>
-    <div class="overflow-x-auto border rounded"><table class="tbl w-full text-sm min-w-[480px]">
-      <thead><tr><th>Código</th><th>Descrição</th><th class="text-right">Pçs</th><th class="text-right">Dimensões (mm)</th><th class="text-right">M²</th><th class="text-right">Kg</th></tr></thead>
-      <tbody>${c.vidros ? '' : ''}</tbody>
-    </table></div>
-    <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total vidros</span><span>${brl(c.vidrosTotal)}</span></div>
+  return `<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-lg shadow p-4">
+      <h3 class="font-bold text-gray-700 mb-3">Perfis <span class="text-sm text-gray-500">(${c.perfis.length} itens)</span></h3>
+      <div class="space-y-2">
+        ${opcaoRadio(o.id, 'modoPerfis', 'compra', o.orc.modoPerfis, 'Necessidade de Compra', brl(c.perfisCompra), fmt(c.kgCompra) + 'Kgs')}
+        ${opcaoRadio(o.id, 'modoPerfis', 'obra', o.orc.modoPerfis, 'Necessidade para Obra', brl(c.perfisObra), fmt(c.kgObra) + 'Kgs')}
+      </div>
+      <details class="mt-3 text-sm"><summary class="cursor-pointer text-[#00A99D] font-semibold">Ver perfis</summary>
+        <div class="mt-2 space-y-1">${c.perfis.map(x => `<div class="flex justify-between text-xs border-b py-1"><span>${x.cod} - ${x.d}</span><span>${fmt(x.kgObra, 3)}Kg / ${fmt(x.kgCompra, 3)}Kg</span></div>`).join('')}</div></details>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+      <h3 class="font-bold text-gray-700 mb-3">Componentes <span class="text-sm text-gray-500">(${c.comps.length} itens)</span></h3>
+      <div class="space-y-2">
+        ${opcaoRadio(o.id, 'modoComps', 'compra', o.orc.modoComps, 'Necessidade de Compra', brl(c.compsCompra), 'embalagens fechadas')}
+        ${opcaoRadio(o.id, 'modoComps', 'obra', o.orc.modoComps, 'Necessidade para Obra', brl(c.compsObra), 'quantidade exata')}
+      </div>
+      <details class="mt-3 text-sm"><summary class="cursor-pointer text-[#00A99D] font-semibold">Ver componentes</summary>
+        <div class="mt-2 space-y-1">${c.comps.map(x => `<div class="flex justify-between text-xs border-b py-1"><span>${x.c} - ${fmt(x.qtd, Number.isInteger(x.qtd) ? 0 : 2)}${x.u}</span><span>${brl(x.vObra)} / ${brl(x.vCompra)}</span></div>`).join('')}</div></details>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4">
+      <h3 class="font-bold text-gray-700 mb-3">Vidros <span class="text-sm text-gray-500">(${c.vidros.length} itens)</span></h3>
+      ${c.vidros.map(v => `<div class="border rounded-lg p-3 flex justify-between text-sm mb-2"><span><b>${v.c}</b><br><span class="text-xs text-gray-500">${v.pcs} pçs · ${fmt(v.m2, 3)} m² · ${fmt(v.kg, 3)} Kg</span></span><b>${brl(v.valor)}</b></div>`).join('')}
+      <div class="flex justify-between font-bold border-t pt-2 mt-2"><span>Total vidros</span><span>${brl(c.vidrosTotal)}</span></div>
+    </div>
   </div>
   <div class="bg-white rounded-lg shadow p-4 mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center">
     <div class="rounded-lg bg-gray-50 p-3"><div class="text-xs text-gray-500 font-semibold">TOTAL NECESSIDADE DE COMPRA</div><div class="text-xl font-extrabold text-gray-700">${brl(c.matCompra)}</div></div>
@@ -954,8 +727,315 @@ function validarEtapa2(soVisual) {
   if (!ok && !soVisual) toast('Informe o custo de instalação (campo obrigatório).', 'erro');
   return ok;
 }
+function orcStep3(o, c) {
+  return `<div class="bg-white rounded-lg shadow p-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+      <h3 class="font-bold text-gray-700">Ajuste de Preços</h3>
+      <button onclick="modalDesconto('${o.id}')" class="btn btn-blue">ADICIONAR DESCONTO</button>
+    </div>
+    <div class="overflow-x-auto border rounded"><table class="tbl w-full text-sm min-w-[600px]">
+      <thead><tr><th>Tipologia</th><th class="text-right">Qtd</th><th class="text-right">Desconto</th><th class="text-right">Valor</th><th class="text-right">Subtotal</th></tr></thead>
+      <tbody>${c.itens.map(i => `<tr><td><b>${i.tip.cod}</b><div class="text-xs text-gray-500">${i.tip.nome}</div></td><td class="text-right">${i.qtd} peça(s)</td><td class="text-right ${i.desconto ? 'text-red-600 font-semibold' : ''}">${brl(i.desconto)}${i.desconto ? ` <button onclick="removerDesconto('${o.id}',${i.idx})" class="text-xs text-gray-400 hover:text-red-600 ml-1" title="Remover desconto">✕</button>` : ''}</td><td class="text-right">${brl(i.valor)}</td><td class="text-right font-bold">${brl(i.subtotal)}</td></tr>`).join('')}</tbody>
+    </table></div>
+    <div class="mt-4 ml-auto max-w-xs space-y-1 text-sm">
+      <div class="flex justify-between"><span>Subtotal</span><b>${brl(c.preco)}</b></div>
+      <div class="flex justify-between text-red-600"><span>Descontos</span><b>- ${brl(c.descTotal)}</b></div>
+      <div class="flex justify-between text-lg border-t pt-2"><span class="font-bold">Total</span><b class="text-[#00A99D]">${brl(c.total)}</b></div>
+    </div>
+  </div>${navOrc(o, 3)}`;
+}
+function modalDesconto(oid) {
+  const o = obraById(oid), c = orcCalc(o);
+  openModal('Adicionar Desconto', `
+    <label class="lbl !mt-0">Tipologia</label>
+    <select id="mdTip" class="inp">${c.itens.map(i => `<option value="${i.idx}">${i.tip.cod} - ${brl(i.valor)}</option>`).join('')}</select>
+    <label class="lbl">Tipo de desconto</label>
+    <select id="mdTipo" class="inp"><option value="R$">Valor (R$)</option><option value="%">Percentual (%)</option></select>
+    <label class="lbl">Desconto</label>
+    <input id="mdVal" type="number" min="0" step="0.01" class="inp" placeholder="0,00">
+    <p id="mdErr" class="hidden text-xs text-red-500 mt-1">Desconto inválido: deve ser maior que zero e não pode exceder o valor da tipologia.</p>`,
+    () => {
+      const idx = +$('mdTip').value, it = c.itens.find(i => i.idx === idx);
+      let v = num($('mdVal').value);
+      if ($('mdTipo').value === '%') v = r2(it.valor * v / 100);
+      if (!(v > 0) || v > it.valor) { $('mdErr').classList.remove('hidden'); $('mdVal').classList.add('err'); return false; }
+      o.tipologias[idx].desconto = r2(v);
+      o.valor = orcCalc(o).total; save(); render(); toast('Desconto aplicado com sucesso!');
+    });
+}
+function removerDesconto(oid, idx) { const o = obraById(oid); o.tipologias[idx].desconto = 0; o.valor = orcCalc(o).total; save(); render(); }
+function orcStep4(o, c) {
+  return `<div class="bg-white rounded-lg shadow p-4 max-w-2xl">
+    <h3 class="font-bold text-gray-700 border-b pb-2">Entrega e Pagamento</h3>
+    <label class="lbl">Data de Entrega</label><input class="inp" value="${esc(o.orc.entrega)}" placeholder="a Combinar" oninput="setOrc('${o.id}','entrega',this.value)">
+    <label class="lbl">Condições de Pagamento</label><textarea class="inp" rows="3" placeholder="a Combinar" oninput="setOrc('${o.id}','condicoes',this.value)">${esc(o.orc.condicoes)}</textarea>
+    <label class="lbl">Valor Total</label><input class="inp bg-gray-50 font-bold text-[#00A99D]" readonly value="${brl(c.total)}">
+  </div>${navOrc(o, 4)}`;
+}
+function orcStep5(o, c) {
+  return `<div class="bg-white rounded-lg shadow p-4 max-w-2xl">
+    <h3 class="font-bold text-gray-700 border-b pb-2">Informações Principais</h3>
+    <label class="lbl">Data</label><input class="inp" value="${esc(o.orc.data)}" placeholder="05/11/2026" oninput="setOrc('${o.id}','data',this.value)">
+    <label class="lbl">Nome da Obra</label><input class="inp" value="${esc(o.nome)}" oninput="obraById('${o.id}').nome=this.value;save()">
+    <label class="lbl">Cliente</label><select class="inp" onchange="obraById('${o.id}').clienteId=this.value;save()">${DB.clientes.map(cl => `<option value="${cl.id}" ${cl.id === o.clienteId ? 'selected' : ''}>${esc(cl.nome)}</option>`).join('')}</select>
+    <div class="flex items-center justify-between mt-4"><span class="lbl !m-0">Observações</span><button onclick="modalObs('${o.id}')" class="btn btn-outline !py-1">EDITAR</button></div>
+    <div class="mt-2 p-3 rounded border bg-gray-50 text-sm min-h-[60px] whitespace-pre-wrap">${o.orc.obs ? esc(o.orc.obs) : '<span class="text-gray-400">Nenhuma observação.</span>'}</div>
+  </div>${navOrc(o, 5)}`;
+}
+function modalObs(oid) {
+  const o = obraById(oid);
+  openModal('Observações', `<textarea id="obsTxt" class="inp" rows="6" placeholder="Ex: Prazo de instalação de 15 dias após aprovação.">${esc(o.orc.obs)}</textarea>`, () => {
+    o.orc.obs = $('obsTxt').value; save(); render(); toast('Observações salvas!');
+  });
+}
+function orcStep6(o, c) {
+  const cl = cliById(o.clienteId);
+  const linha = (l, v, b) => `<tr class="${b ? 'font-bold bg-gray-50' : ''}"><td>${l}</td><td class="text-right">${brl(v)}</td></tr>`;
+  return `<div id="print-area" class="bg-white rounded-lg shadow p-4 sm:p-6">
+    <div class="flex flex-col sm:flex-row justify-between gap-3 border-b pb-4">
+      <div><div class="text-[#00A99D] font-extrabold text-xl">SUPREMA SERRALHERIA</div><div class="text-sm text-gray-500">Orçamento Obra Nº ${o.numero} · ${esc(o.orc.data)}</div></div>
+      <div class="sm:text-right"><div class="text-xs text-gray-500 font-semibold">VALOR</div><div class="text-3xl font-extrabold text-gray-800">${brl(c.total)}</div><div class="text-sm text-gray-500">${c.itens.length} tipologia(s) · ${esc(cl ? cl.nome : '')}</div></div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+      <div>
+        <h4 class="font-bold text-gray-700 mb-2">Dados da obra</h4>
+        <div class="text-sm space-y-1">
+          <div><b>Obra:</b> ${esc(o.nome)} - ${esc(o.descricao)}</div>
+          <div><b>Cliente:</b> ${esc(cl ? cl.nome : '')} ${cl && cl.tel ? '· ' + esc(cl.tel) : ''}</div>
+          <div><b>Endereço:</b> ${esc(cl ? cl.end : '')}</div>
+          <div><b>Entrega:</b> ${esc(o.orc.entrega)}</div>
+          <div><b>Pagamento:</b> ${esc(o.orc.condicoes)}</div>
+          ${o.orc.obs ? `<div><b>Observações:</b> ${esc(o.orc.obs)}</div>` : ''}
+        </div>
+        <h4 class="font-bold text-gray-700 mt-4 mb-2">Tipologias</h4>
+        ${c.itens.map(i => `<div class="flex justify-between text-sm border-b py-1"><span>${i.qtd}x ${i.tip.cod} - ${i.tip.nome}</span><b>${brl(i.subtotal)}</b></div>`).join('')}
+      </div>
+      <div>
+        <h4 class="font-bold text-gray-700 mb-2">Custos e Formação de Preço</h4>
+        <table class="tbl w-full text-sm border rounded"><tbody>
+          ${linha('Perfis', c.perf)}${linha('Componentes', c.comp)}${linha('Vidros', c.vidrosTotal)}
+          ${linha('Total Materiais', c.mat, true)}
+          ${linha('Produção', c.prod)}${linha('Instalação', c.inst)}
+          ${linha('Lucro (' + fmt(o.orc.margem, 0) + '%)', c.lucro)}${linha('Impostos (' + fmt(o.orc.impostos, 0) + '%)', c.impostos)}
+          ${linha('Total Lucro/Impostos', c.lucroImp, true)}
+          ${c.descTotal ? linha('Descontos', -c.descTotal) : ''}
+          <tr class="font-extrabold text-[#00A99D]"><td>VALOR TOTAL</td><td class="text-right">${brl(c.total)}</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+  ${navOrc(o, 6, `<button onclick="window.print()" class="btn btn-outline">BAIXAR PDF</button><button onclick="marcarVenda('${o.id}')" class="btn btn-green">MARCAR COMO VENDA</button>`)}`;
+}
+function salvarOrcamento(oid) {
+  const o = obraById(oid);
+  o.valor = orcCalc(o).total;
+  o.orcSalvo = true;
+  save();
+  toast('Orçamento Salvo com sucesso');
+}
+function marcarVenda(oid) {
+  const o = obraById(oid), c = orcCalc(o), cl = cliById(o.clienteId);
+  if (DB.vendas.some(v => v.obraId === oid)) { toast('Esta obra já está marcada como venda.', 'info'); go('vendas'); return; }
+  DB.vendas.unshift({ id: uid(), obraId: oid, numero: o.numero, cliente: cl ? cl.nome : '', valor: c.total, data: hojeBR(), status: 'Em produção' });
+  o.status = 'Vendida'; o.valor = c.total; save();
+  toast('Obra marcada como venda!');
+  go('vendas');
+}
 
-/* OUTRAS VIEWS - PLANOS, NOVIDADES, SAIR */
+/* =========================================================
+   CLIENTES
+   ========================================================= */
+VIEWS.clientes = () => {
+  const btn = `<button onclick="modalCliente(null, () => render())" class="btn btn-blue">+ NOVO CLIENTE</button>`;
+  if (!DB.clientes.length) return pageHeader('Meus Clientes', '', btn) + vazio('Nenhum cliente cadastrado.', btn);
+  return pageHeader('Meus Clientes', DB.clientes.length + ' cliente(s)', btn) + `
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    ${DB.clientes.map(c => {
+      const obras = DB.obras.filter(o => o.clienteId === c.id);
+      return `<div onclick="go('cliente',{id:'${c.id}'})" class="bg-white rounded-lg shadow p-4 cursor-pointer hover:ring-2 hover:ring-[#00A99D]">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-full bg-[#00A99D] text-white font-bold text-lg flex items-center justify-center">${esc(c.nome.charAt(0).toUpperCase())}</div>
+          <div class="min-w-0"><div class="font-bold text-gray-800 truncate">${esc(c.nome)}</div><div class="text-xs text-gray-500 truncate">${esc(c.email || 'sem e-mail')}</div></div>
+        </div>
+        <div class="text-xs text-gray-500 mt-3">${esc(c.tel || 'sem telefone')} · ${esc(c.end || 'sem endereço')}</div>
+        <div class="flex justify-between mt-3 pt-3 border-t text-sm"><span>${obras.length} obra(s)</span><b class="text-[#00A99D]">${brl(obras.reduce((s, o) => s + num(o.valor), 0))}</b></div>
+      </div>`;
+    }).join('')}
+  </div>`;
+};
+VIEWS.cliente = p => {
+  const c = cliById(p.id);
+  if (!c) return vazio('Cliente não encontrado.', `<button onclick="go('clientes')" class="btn btn-blue">VOLTAR</button>`);
+  const obras = DB.obras.filter(o => o.clienteId === c.id);
+  return `<button onclick="go('clientes')" class="text-sm text-[#00A99D] font-semibold mb-2 hover:underline">← Meus Clientes</button>
+  ${pageHeader(esc(c.nome), 'Detalhes do cliente', `<button onclick="modalCliente('${c.id}', () => render())" class="btn btn-teal">EDITAR</button><button onclick="excluirCliente('${c.id}')" class="btn btn-red">EXCLUIR</button>`)}
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="bg-white rounded-lg shadow p-4 text-sm space-y-2">
+      <div><span class="text-gray-500">E-mail:</span> <b>${esc(c.email || '-')}</b></div>
+      <div><span class="text-gray-500">Telefone:</span> <b>${esc(c.tel || '-')}</b></div>
+      <div><span class="text-gray-500">Endereço:</span> <b>${esc(c.end || '-')}</b></div>
+      <div class="pt-2 border-t"><span class="text-gray-500">Total em obras:</span> <b class="text-[#00A99D]">${brl(obras.reduce((s, o) => s + num(o.valor), 0))}</b></div>
+    </div>
+    <div class="lg:col-span-2 bg-white rounded-lg shadow">
+      <div class="px-4 py-3 border-b font-bold flex justify-between items-center">Obras <button onclick="go('novaObra')" class="btn btn-blue !py-1">+ NOVA OBRA</button></div>
+      ${obras.length ? obras.map(o => `<div onclick="go('obra',{id:'${o.id}'})" class="px-4 py-3 border-b last:border-0 hover:bg-teal-50 cursor-pointer flex justify-between"><div><b>#${o.numero} - ${esc(o.nome)}</b><div class="text-xs text-gray-500">${esc(o.descricao)}</div></div><div class="text-right"><b>${brl(o.valor)}</b><br>${badgeStatus(o.status)}</div></div>`).join('') : '<div class="p-4 text-sm text-gray-500">Nenhuma obra para este cliente.</div>'}
+    </div>
+  </div>`;
+};
+function excluirCliente(id) {
+  if (DB.obras.some(o => o.clienteId === id)) { toast('Não é possível excluir: o cliente possui obras.', 'erro'); return; }
+  openModal('Excluir cliente', '<p class="text-sm">Deseja realmente excluir este cliente?</p>', () => {
+    DB.clientes = DB.clientes.filter(c => c.id !== id); save(); toast('Cliente excluído.'); go('clientes');
+  }, { saveLabel: 'EXCLUIR' });
+}
+
+/* =========================================================
+   SERVIÇOS, PROJETOS, FORNECEDORES
+   ========================================================= */
+VIEWS.servicos = () => {
+  const btn = `<button onclick="modalServico()" class="btn btn-blue">+ CADASTRAR SERVIÇO</button>`;
+  if (!DB.servicos.length) return pageHeader('Meus Serviços', '') + vazio('Você ainda não cadastrou nenhum serviço.', btn);
+  return pageHeader('Meus Serviços', DB.servicos.length + ' serviço(s)', btn) + `<div class="bg-white rounded-lg shadow">
+    ${DB.servicos.map(s => `<div class="px-4 py-3 border-b last:border-0 flex justify-between items-center gap-3"><div><b>${esc(s.nome)}</b><div class="text-xs text-gray-500">${esc(s.desc)}</div></div><div class="flex items-center gap-3"><b>${brl(s.valor)}/${esc(s.un)}</b><button onclick="removerItem('servicos','${s.id}')" class="text-red-500 text-sm font-semibold">Excluir</button></div></div>`).join('')}</div>`;
+};
+function modalServico() {
+  openModal('Cadastrar Serviço', `
+    <label class="lbl !mt-0">Nome*</label><input id="svNome" class="inp" placeholder="Instalação de janela">
+    <label class="lbl">Descrição</label><input id="svDesc" class="inp" placeholder="Instalação com vedação em silicone">
+    <div class="grid grid-cols-2 gap-3"><div><label class="lbl">Valor (R$)*</label><input id="svVal" type="number" min="0" step="0.01" class="inp" placeholder="50,00"></div>
+    <div><label class="lbl">Unidade</label><select id="svUn" class="inp"><option>PEÇA</option><option>M²</option><option>KG</option><option>HORA</option></select></div></div>
+    <p id="svErr" class="hidden text-xs text-red-500 mt-2">Informe nome e valor.</p>`,
+    () => {
+      const nome = $('svNome').value.trim(), v = num($('svVal').value);
+      if (!nome || !(v > 0)) { $('svErr').classList.remove('hidden'); return false; }
+      DB.servicos.push({ id: uid(), nome, desc: $('svDesc').value.trim(), valor: v, un: $('svUn').value }); save(); render(); toast('Serviço cadastrado com sucesso!');
+    });
+}
+VIEWS.projetos = () => {
+  const btn = `<button onclick="modalMinhaTipologia()" class="btn btn-blue">+ CRIAR TIPOLOGIA</button>`;
+  if (!DB.minhasTipologias.length) return pageHeader('Minhas Tipologias', 'Meus Projetos') + vazio('Você ainda não criou nenhuma tipologia personalizada.', btn);
+  return pageHeader('Minhas Tipologias', 'Meus Projetos', btn) + `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    ${DB.minhasTipologias.map(t => `<div class="bg-white rounded-lg shadow p-4 flex gap-3 items-center"><div>${janelaSVG({ n: t.n, tipo: t.tipo }, 90, 64)}</div><div class="flex-1 min-w-0"><b>${esc(t.cod)}</b><div class="text-sm text-gray-500">${esc(t.nome)}</div><button onclick="removerItem('minhasTipologias','${t.id}')" class="text-red-500 text-xs font-semibold mt-2">Excluir</button></div></div>`).join('')}</div>`;
+};
+function modalMinhaTipologia() {
+  openModal('Criar Tipologia', `
+    <label class="lbl !mt-0">Código*</label><input id="mtCod" class="inp" placeholder="JC200-ESP">
+    <label class="lbl">Nome*</label><input id="mtNome" class="inp" placeholder="Janela correr especial">
+    <div class="grid grid-cols-2 gap-3"><div><label class="lbl">Tipo</label><select id="mtTipo" class="inp"><option value="correr">Correr</option><option value="maxim">Maxim-ar</option><option value="giro">Giro</option><option value="fixo">Fixo</option></select></div>
+    <div><label class="lbl">Folhas</label><select id="mtN" class="inp"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div></div>
+    <p id="mtErr" class="hidden text-xs text-red-500 mt-2">Informe código e nome.</p>`,
+    () => {
+      const cod = $('mtCod').value.trim(), nome = $('mtNome').value.trim();
+      if (!cod || !nome) { $('mtErr').classList.remove('hidden'); return false; }
+      DB.minhasTipologias.push({ id: uid(), cod, nome, tipo: $('mtTipo').value, n: +$('mtN').value }); save(); render(); toast('Tipologia criada com sucesso!');
+    });
+}
+VIEWS.fornecedores = () => {
+  if (!DB.fornecedores.length) return pageHeader('Meus Fornecedores', '') + vazio('Nenhum fornecedor cadastrado.', `<button onclick="modalFornecedor()" class="btn btn-blue">CADASTRAR PRIMEIRO FORNECEDOR</button>`);
+  return pageHeader('Meus Fornecedores', DB.fornecedores.length + ' fornecedor(es)', `<button onclick="modalFornecedor()" class="btn btn-blue">+ NOVO FORNECEDOR</button>`) + `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+    ${DB.fornecedores.map(f => `<div class="bg-white rounded-lg shadow p-4"><b>${esc(f.nome)}</b><div class="text-xs text-gray-500 mt-1">${esc(f.tipo)}</div><div class="text-sm mt-2">${esc(f.tel || '-')}<br>${esc(f.email || '-')}<br>${esc(f.cidade || '-')}</div><button onclick="removerItem('fornecedores','${f.id}')" class="text-red-500 text-xs font-semibold mt-2">Excluir</button></div>`).join('')}</div>`;
+};
+function modalFornecedor() {
+  openModal('Cadastrar Fornecedor', `
+    <label class="lbl !mt-0">Nome*</label><input id="fnNome" class="inp" placeholder="Alumínios Bahia Ltda">
+    <label class="lbl">Fornece</label><select id="fnTipo" class="inp"><option>Perfis</option><option>Componentes</option><option>Vidros</option><option>Diversos</option></select>
+    <label class="lbl">Telefone</label><input id="fnTel" class="inp" inputmode="numeric" placeholder="(73)99978-8982" maxlength="14" oninput="maskPhone(this)">
+    <label class="lbl">E-mail</label><input id="fnEmail" type="email" class="inp" placeholder="vendas@fornecedor.com.br">
+    <label class="lbl">Cidade</label><input id="fnCid" class="inp" placeholder="Itabuna - BA">
+    <p id="fnErr" class="hidden text-xs text-red-500 mt-2">Informe o nome do fornecedor.</p>`,
+    () => {
+      const nome = $('fnNome').value.trim();
+      if (!nome) { $('fnErr').classList.remove('hidden'); $('fnNome').classList.add('err'); return false; }
+      DB.fornecedores.push({ id: uid(), nome, tipo: $('fnTipo').value, tel: $('fnTel').value, email: $('fnEmail').value.trim(), cidade: $('fnCid').value.trim() }); save(); render(); toast('Fornecedor cadastrado com sucesso!');
+    });
+}
+function removerItem(col, id) {
+  openModal('Excluir', '<p class="text-sm">Deseja realmente excluir este registro?</p>', () => { DB[col] = DB[col].filter(x => x.id !== id); save(); render(); toast('Registro excluído.'); }, { saveLabel: 'EXCLUIR' });
+}
+
+/* =========================================================
+   VENDAS, LOTE, AGENDA, FINANCEIRO
+   ========================================================= */
+const STATUS_VENDA = ['Em produção', 'Instalada', 'Recebida'];
+VIEWS.vendas = () => {
+  if (!DB.vendas.length) return pageHeader('Minhas Vendas', '') + vazio('Nenhuma venda registrada. Marque um orçamento como venda na etapa de Resumo.', `<button onclick="go('obras')" class="btn btn-blue">IR PARA MINHAS OBRAS</button>`);
+  return pageHeader('Minhas Vendas', DB.vendas.length + ' venda(s) · Total ' + brl(DB.vendas.reduce((s, v) => s + v.valor, 0))) + `
+  <div class="bg-white rounded-lg shadow overflow-x-auto"><table class="tbl w-full text-sm min-w-[640px]">
+    <thead><tr><th>Obra</th><th>Cliente</th><th>Data</th><th>Status</th><th class="text-right">Valor</th></tr></thead>
+    <tbody>${DB.vendas.map(v => `<tr class="hover:bg-gray-50">
+      <td><button onclick="go('obra',{id:'${v.obraId}'})" class="font-bold text-[#00A99D] hover:underline">#${v.numero}</button></td>
+      <td>${esc(v.cliente)}</td><td>${v.data}</td>
+      <td><select class="inp !py-1 !w-auto" onchange="setStatusVenda('${v.id}',this.value)">${STATUS_VENDA.map(s => `<option ${s === v.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td>
+      <td class="text-right font-bold">${brl(v.valor)}</td></tr>`).join('')}</tbody>
+  </table></div>`;
+};
+function setStatusVenda(id, s) { DB.vendas.find(v => v.id === id).status = s; save(); toast('Status atualizado!'); }
+VIEWS.lote = () => {
+  const obras = DB.obras.filter(o => o.tipologias.length);
+  if (!obras.length) return pageHeader('Produção em Lote', '') + vazio('Nenhuma obra com tipologias para produzir.', `<button onclick="go('obras')" class="btn btn-blue">IR PARA MINHAS OBRAS</button>`);
+  return pageHeader('Produção em Lote', 'Selecione as obras para gerar o plano de corte consolidado') + `
+  <div class="bg-white rounded-lg shadow p-4">
+    ${obras.map(o => `<label class="flex items-center gap-3 py-2 border-b last:border-0 cursor-pointer"><input type="checkbox" class="lote-chk w-4 h-4 accent-[#00A99D]" value="${o.id}" checked><span class="flex-1"><b>#${o.numero}</b> - ${esc(o.nome)} <span class="text-xs text-gray-500">(${o.tipologias.reduce((s, t) => s + (num(t.qtd) || 1), 0)} peça(s))</span></span></label>`).join('')}
+    <div class="flex justify-end mt-3"><button onclick="gerarLote()" class="btn btn-blue">GERAR PLANO DE PRODUÇÃO</button></div>
+  </div><div id="loteRes" class="mt-4"></div>`;
+};
+function gerarLote() {
+  const ids = Array.from(document.querySelectorAll('.lote-chk:checked')).map(x => x.value);
+  if (!ids.length) { toast('Selecione ao menos uma obra.', 'erro'); return; }
+  const P = {}, C = {};
+  let kg = 0, kgC = 0;
+  ids.forEach(id => {
+    const m = materiaisObra(obraById(id));
+    m.perfis.forEach(x => { const a = P[x.cod] || (P[x.cod] = { cod: x.cod, d: x.d, kg: 0, barras: 0 }); a.kg += x.kgObra; a.barras += x.barras; });
+    m.comps.forEach(x => { const a = C[x.c] || (C[x.c] = { c: x.c, d: x.d, u: x.u, qtd: 0 }); a.qtd += x.qtd; });
+    kg += m.kgObra; kgC += m.kgCompra;
+  });
+  $('loteRes').innerHTML = `<div class="bg-white rounded-lg shadow p-4">
+    <h3 class="font-bold text-gray-700 mb-2">Plano consolidado (${ids.length} obra(s)) · ${fmt(kg, 3)} Kg líquido · ${fmt(kgC, 3)} Kg bruto</h3>
+    <div class="overflow-x-auto border rounded"><table class="tbl w-full text-sm min-w-[480px]"><thead><tr><th>Perfil</th><th>Descrição</th><th class="text-right">Barras</th><th class="text-right">Kg</th></tr></thead>
+    <tbody>${Object.values(P).map(x => `<tr><td class="font-bold">${x.cod}</td><td>${x.d}</td><td class="text-right">${x.barras}</td><td class="text-right">${fmt(x.kg, 3)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="overflow-x-auto border rounded mt-4"><table class="tbl w-full text-sm min-w-[480px]"><thead><tr><th>Componente</th><th>Descrição</th><th class="text-right">Qtd</th><th>Un.</th></tr></thead>
+    <tbody>${Object.values(C).map(x => `<tr><td class="font-bold">${x.c}</td><td>${x.d}</td><td class="text-right">${fmt(x.qtd, Number.isInteger(x.qtd) ? 0 : 2)}</td><td>${x.u}</td></tr>`).join('')}</tbody></table></div>
+  </div>`;
+  toast('Plano de produção gerado!');
+}
+VIEWS.agenda = () => {
+  const obras = DB.obras.slice().sort((a, b) => (a.entrega || '9999') < (b.entrega || '9999') ? -1 : 1);
+  const hj = hoje().toISOString().slice(0, 10);
+  return pageHeader('Minha Agenda', 'Previsões de entrega das obras') + `<div class="bg-white rounded-lg shadow">
+    ${obras.map(o => {
+      const atras = o.entrega && o.entrega < hj && o.status !== 'Vendida';
+      const cl = cliById(o.clienteId);
+      return `<div onclick="go('obra',{id:'${o.id}'})" class="px-4 py-3 border-b last:border-0 flex items-center gap-4 hover:bg-teal-50 cursor-pointer">
+        <div class="w-16 text-center shrink-0 rounded-lg ${o.entrega ? (atras ? 'bg-red-100 text-red-700' : 'bg-teal-50 text-[#00A99D]') : 'bg-gray-100 text-gray-500'} py-2">
+          ${o.entrega ? `<div class="text-xl font-extrabold leading-none">${o.entrega.slice(8, 10)}</div><div class="text-[11px] font-bold">${['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'][+o.entrega.slice(5, 7) - 1]}/${o.entrega.slice(2, 4)}</div>` : '<div class="text-[11px] font-bold">A<br>COMBINAR</div>'}
+        </div>
+        <div class="flex-1 min-w-0"><b>#${o.numero} - ${esc(o.nome)}</b><div class="text-xs text-gray-500">${esc(cl ? cl.nome : '')} · ${esc(o.descricao)}</div></div>
+        ${badgeStatus(o.status)}
+      </div>`;
+    }).join('')}</div>`;
+};
+VIEWS.financeiro = () => {
+  const vendido = DB.vendas.reduce((s, v) => s + v.valor, 0);
+  const recebido = DB.vendas.filter(v => v.status === 'Recebida').reduce((s, v) => s + v.valor, 0);
+  const aberto = DB.obras.filter(o => o.status !== 'Vendida').reduce((s, o) => s + num(o.valor), 0);
+  const card = (t, v, c) => `<div class="bg-white rounded-lg shadow p-4"><div class="text-xs font-semibold text-gray-500">${t}</div><div class="text-2xl font-extrabold ${c}">${v}</div></div>`;
+  return pageHeader('Financeiro', 'Resumo de vendas e orçamentos') + `
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+    ${card('TOTAL VENDIDO', brl(vendido), 'text-[#00A99D]')}
+    ${card('A RECEBER', brl(vendido - recebido), 'text-orange-500')}
+    ${card('RECEBIDO', brl(recebido), 'text-[#2ECC71]')}
+    ${card('ORÇAMENTOS EM ABERTO', brl(aberto), 'text-blue-600')}
+  </div>
+  <div class="bg-white rounded-lg shadow">
+    <div class="px-4 py-3 border-b font-bold">Movimentações</div>
+    ${DB.vendas.length ? DB.vendas.map(v => `<div class="px-4 py-3 border-b last:border-0 flex justify-between text-sm"><span><b>#${v.numero}</b> · ${esc(v.cliente)} · ${v.data}</span><span class="font-bold ${v.status === 'Recebida' ? 'text-[#2ECC71]' : 'text-orange-500'}">${brl(v.valor)} · ${v.status}</span></div>`).join('') : '<div class="p-4 text-sm text-gray-500">Nenhuma movimentação.</div>'}
+  </div>`;
+};
+
+/* =========================================================
+   PLANOS, NOVIDADES, SAIR
+   ========================================================= */
 VIEWS.planos = () => {
   const planos = [['Básico', 59.90, ['Até 20 obras/mês', 'Tabela de custos', 'Orçamentos em PDF']], ['Profissional', 99.90, ['Obras ilimitadas', 'Produção em lote', 'Financeiro e agenda', 'Suporte prioritário']], ['Empresarial', 189.90, ['Tudo do Profissional', 'Múltiplos usuários', 'Integração com fornecedores', 'Gerente de conta']]];
   return pageHeader('Planos', 'Seu plano atual: Profissional') + `
@@ -976,7 +1056,7 @@ VIEWS.planos = () => {
 function pagarFatura() {
   openModal('Pagar Fatura - R$99,90', `
     <p class="text-sm text-gray-600">Copie o código PIX abaixo e pague no aplicativo do seu banco:</p>
-    <textarea readonly class="inp mt-2 text-xs font-mono" rows="4">00020126580014BR.GOV.BCB.PIX0136a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1r2s3t4u5v6w7x8y9z0***6304A1B2</textarea>
+    <textarea readonly class="inp mt-2 text-xs font-mono" rows="4">00020126580014BR.GOV.BCB.PIX0136tec4web-alo-serralheiro-fatura-112026520400005303986540599.905802BR5907TEC4WEB6007ITABUNA62070503***6304A1B2</textarea>
     <p class="text-xs text-gray-500 mt-2">Após o pagamento, clique em "JÁ PAGUEI".</p>`,
     () => { DB.faturaPaga = true; save(); render(); toast('Pagamento informado! Acesso regularizado.'); }, { saveLabel: 'JÁ PAGUEI' });
 }
@@ -1007,7 +1087,7 @@ if (!DB) {
   save();
 }
 applySidebar();
-if(typeof carregarTabelaCustoDoR2 === 'function'){ carregarTabelaCustoDoR2().finally(()=>go('tabela')); } else { go('tabela'); }
+setTimeout(function(){ if(typeof carregarTabelaCustoDoR2==='function'){ carregarTabelaCustoDoR2().finally(function(){ go('tabela'); }); } else { go('tabela'); } }, 100);
 </script>
 </body>
 </html>
